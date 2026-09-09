@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getCurrentAdmin } from '@/lib/auth';
 import { cleanWhatsAppNumber } from '@/lib/whatsapp';
+import { DEFAULT_SHOP_SETTINGS } from '@/lib/catalog';
 
 export async function GET() {
   try {
@@ -28,11 +29,8 @@ export async function GET() {
 
     return NextResponse.json({ settings });
   } catch (error) {
-    console.error('Error fetching settings:', error);
-    return NextResponse.json(
-      { error: 'Failed to retrieve shop settings' },
-      { status: 500 }
-    );
+    console.warn('Database error in /api/settings, returning default settings:', (error as any)?.message || error);
+    return NextResponse.json({ settings: DEFAULT_SHOP_SETTINGS });
   }
 }
 

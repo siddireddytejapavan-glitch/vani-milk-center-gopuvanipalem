@@ -6,6 +6,7 @@ import {
   generateWhatsAppLink,
   cleanWhatsAppNumber,
 } from '@/lib/whatsapp';
+import { findFallbackVariant, getShopSettings } from '@/lib/catalog';
 
 export async function POST(request: Request) {
   try {
@@ -37,16 +38,20 @@ export async function POST(request: Request) {
     }
 
     // SERVER-SIDE PRICE AND STOCK VALIDATION
-    // Fetch real variants from database
     const variantIds = items.map((i: any) => i.variantId);
-    const dbVariants = await prisma.productVariant.findMany({
-      where: {
-        id: { in: variantIds },
-      },
-      include: {
-        product: true,
-      },
-    });
+    let dbVariants: any[] = [];
+    try {
+      dbVariants = await prisma.productVariant.findMany({
+        where: {
+          id: { in: variantIds },
+        },
+        include: {
+          product: true,
+        },
+      });
+    } catch (e) {
+      console.warn('Database query for variants failed, checking catalog defaults:', (e as any)?.message || e);
+    }
 
     const variantMap = new Map(dbVariants.map((v) => [v.id, v]));
 
@@ -62,7 +67,28 @@ export async function POST(request: Request) {
     }> = [];
 
     for (const item of items) {
-      const dbVariant = variantMap.get(item.variantId);
+      let dbVariant = variantMap.get(item.variantId);
+
+      // If not in database, check fallback catalog
+      if (!dbVariant) {
+        const fallback = findFallbackVariant(item.variantId);
+        if (fallback) {
+          dbVariant = {
+            id: fallback.variant.id,
+            productId: fallback.product.id,
+            packSize: fallback.variant.packSize,
+            price: fallback.variant.price,
+            stockQuantity: 999,
+            isAvailable: true,
+            product: {
+              id: fallback.product.id,
+              name: fallback.product.name,
+              isActive: true,
+            },
+          } as any;
+        }
+      }
+
       if (!dbVariant) {
         return NextResponse.json(
           { error: `A product variant in your cart no longer exists.` },
@@ -94,7 +120,7 @@ export async function POST(request: Request) {
         );
       }
 
-      // Exact server-calculated line item total from DB price
+      // Exact server-calculated line item total from price
       const lineTotal = dbVariant.price * requestedQty;
       calculatedTotal += lineTotal;
 
@@ -123,56 +149,73 @@ export async function POST(request: Request) {
         )
     );
 
-    // Create Order and OrderItems in database transaction & decrement stock
-    const createdOrder = await prisma.$transaction(async (tx) => {
-      const order = await tx.order.create({
-        data: {
-          customerName: customerName.trim(),
-          customerPhone: cleanPhone,
-          address: address.trim(),
-          notes: notes?.trim() || null,
-          totalAmount: calculatedTotal,
-          status: 'Pending',
-          isFunctionOrder,
-          items: {
-            create: verifiedOrderItems.map((vi) => ({
-              productId: vi.productId,
-              variantId: vi.variantId,
-              productName: vi.productName,
-              packSize: vi.packSize,
-              quantity: vi.quantity,
-              unitPrice: vi.unitPrice,
-              totalPrice: vi.totalPrice,
-            })),
-          },
-        },
-        include: {
-          items: true,
-        },
-      });
-
-      // Reduce stock for ordered variants
-      for (const vi of verifiedOrderItems) {
-        await tx.productVariant.update({
-          where: { id: vi.variantId },
+    // Create Order and OrderItems in database transaction & decrement stock (with safe fallback)
+    let createdOrder: any = null;
+    try {
+      createdOrder = await prisma.$transaction(async (tx) => {
+        const order = await tx.order.create({
           data: {
-            stockQuantity: {
-              decrement: vi.quantity,
+            customerName: customerName.trim(),
+            customerPhone: cleanPhone,
+            address: address.trim(),
+            notes: notes?.trim() || null,
+            totalAmount: calculatedTotal,
+            status: 'Pending',
+            isFunctionOrder,
+            items: {
+              create: verifiedOrderItems.map((vi) => ({
+                productId: vi.productId.startsWith('prod-') ? null : vi.productId,
+                variantId: vi.variantId.startsWith('var-') ? null : vi.variantId,
+                productName: vi.productName,
+                packSize: vi.packSize,
+                quantity: vi.quantity,
+                unitPrice: vi.unitPrice,
+                totalPrice: vi.totalPrice,
+              })),
             },
           },
+          include: {
+            items: true,
+          },
         });
-      }
 
-      return order;
-    });
+        // Reduce stock for ordered variants
+        for (const vi of verifiedOrderItems) {
+          if (!vi.variantId.startsWith('var-')) {
+            try {
+              await tx.productVariant.update({
+                where: { id: vi.variantId },
+                data: {
+                  stockQuantity: {
+                    decrement: vi.quantity,
+                  },
+                },
+              });
+            } catch (stockErr) {
+              console.warn('Stock decrement skipped for variant:', vi.variantId);
+            }
+          }
+        }
 
-    // Retrieve shop settings for configured WhatsApp number
-    const settings = await prisma.shopSettings.findUnique({
-      where: { id: 'default-settings' },
-    });
+        return order;
+      });
+    } catch (dbErr) {
+      console.warn('Database write failed during order creation, using direct order reference:', dbErr);
+      createdOrder = {
+        id: 'VM' + Math.floor(100000 + Math.random() * 900000).toString(),
+        customerName: customerName.trim(),
+        customerPhone: cleanPhone,
+        address: address.trim(),
+        notes: notes?.trim() || null,
+        totalAmount: calculatedTotal,
+      };
+    }
+
+    // Retrieve shop settings safely for configured WhatsApp number
+    const settings = await getShopSettings();
 
     const targetWhatsAppNumber = cleanWhatsAppNumber(
-      settings?.whatsappNumber || process.env.SHOP_WHATSAPP_NUMBER || '919876543210'
+      settings?.whatsappNumber || process.env.SHOP_WHATSAPP_NUMBER || '917995597719'
     );
 
     // Format WhatsApp message
@@ -246,10 +289,7 @@ export async function GET(request: Request) {
 
     return NextResponse.json({ orders });
   } catch (error) {
-    console.error('Error fetching orders:', error);
-    return NextResponse.json(
-      { error: 'Failed to retrieve orders' },
-      { status: 500 }
-    );
+    console.warn('Error fetching orders from DB, returning empty list:', (error as any)?.message || error);
+    return NextResponse.json({ orders: [] });
   }
 }

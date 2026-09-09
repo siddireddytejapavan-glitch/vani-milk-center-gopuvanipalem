@@ -6,15 +6,13 @@ import Navbar from '@/components/customer/Navbar';
 import Footer from '@/components/customer/Footer';
 import FloatingWhatsApp from '@/components/customer/FloatingWhatsApp';
 import CartDrawer from '@/components/customer/CartDrawer';
-import { prisma } from '@/lib/db';
+import { getShopSettings } from '@/lib/catalog';
 import { generateEnquiryWhatsAppLink } from '@/lib/whatsapp';
 
 export const dynamic = 'force-dynamic';
 
 export default async function AboutPage() {
-  const settings = await prisma.shopSettings.findUnique({
-    where: { id: 'default-settings' },
-  });
+  const settings = await getShopSettings();
 
   const shopName = settings?.shopName || 'VANI MILK CENTER, GOPIVANIPALEM';
   const whatsappNumber = settings?.whatsappNumber || '917995597719';

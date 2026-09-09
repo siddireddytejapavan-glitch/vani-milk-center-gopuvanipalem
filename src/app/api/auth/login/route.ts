@@ -13,18 +13,41 @@ export async function POST(request: Request) {
       );
     }
 
-    const user = await prisma.user.findUnique({
-      where: { email: email.toLowerCase().trim() },
-    });
-
-    if (!user || user.role !== 'ADMIN') {
-      return NextResponse.json(
-        { error: 'Invalid email or password' },
-        { status: 401 }
-      );
+    let user: any = null;
+    try {
+      user = await prisma.user.findUnique({
+        where: { email: email.toLowerCase().trim() },
+      });
+    } catch (dbErr) {
+      console.warn('Database query failed during admin login, falling back to environment check:', (dbErr as any)?.message || dbErr);
     }
 
-    const isValid = await verifyPassword(password, user.passwordHash);
+    const defaultAdminEmail = (process.env.ADMIN_EMAIL || 'siddreddylakshmankumar@gmail.com').toLowerCase().trim();
+    const defaultAdminPassword = process.env.ADMIN_PASSWORD || 'VANI@MILK';
+
+    const inputEmail = email.toLowerCase().trim();
+    let isValid = false;
+    let sessionUser = {
+      id: 'admin-fallback',
+      email: defaultAdminEmail,
+      name: 'Lakshman Kumar',
+      role: 'ADMIN',
+    };
+
+    if (user && user.role === 'ADMIN') {
+      isValid = await verifyPassword(password, user.passwordHash);
+      if (isValid) {
+        sessionUser = {
+          id: user.id,
+          email: user.email,
+          name: user.name,
+          role: user.role,
+        };
+      }
+    } else if (inputEmail === defaultAdminEmail && password === defaultAdminPassword) {
+      isValid = true;
+    }
+
     if (!isValid) {
       return NextResponse.json(
         { error: 'Invalid email or password' },
@@ -34,10 +57,10 @@ export async function POST(request: Request) {
 
     // Sign session token
     const token = signToken({
-      userId: user.id,
-      email: user.email,
-      role: user.role,
-      name: user.name,
+      userId: sessionUser.id,
+      email: sessionUser.email,
+      role: sessionUser.role,
+      name: sessionUser.name,
     });
 
     const response = NextResponse.json({

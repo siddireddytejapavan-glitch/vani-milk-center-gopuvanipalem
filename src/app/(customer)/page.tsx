@@ -9,28 +9,14 @@ import ContactSection from '@/components/customer/ContactSection';
 import FloatingWhatsApp from '@/components/customer/FloatingWhatsApp';
 import CartDrawer from '@/components/customer/CartDrawer';
 import ProductCard from '@/components/customer/ProductCard';
-import { prisma } from '@/lib/db';
+import { getFeaturedProductsAndCategories } from '@/lib/catalog';
 import { ArrowRight, Sparkles } from 'lucide-react';
 
 export const dynamic = 'force-dynamic';
 
 export default async function HomePage() {
-  // Fetch active products with categories and variants from database
-  const [featuredProducts, categories] = await Promise.all([
-    prisma.product.findMany({
-      where: { isActive: true },
-      include: {
-        category: true,
-        variants: {
-          orderBy: { price: 'asc' },
-        },
-      },
-      orderBy: [{ isFeatured: 'desc' }, { createdAt: 'desc' }],
-    }),
-    prisma.category.findMany({
-      orderBy: { displayOrder: 'asc' },
-    }),
-  ]);
+  // Resilient fetch with automatic fallback if database is cold-starting or connecting
+  const { products: featuredProducts, categories } = await getFeaturedProductsAndCategories();
 
   return (
     <div className="min-h-screen flex flex-col bg-transparent">

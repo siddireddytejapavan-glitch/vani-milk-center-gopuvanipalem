@@ -4,26 +4,12 @@ import Footer from '@/components/customer/Footer';
 import FloatingWhatsApp from '@/components/customer/FloatingWhatsApp';
 import CartDrawer from '@/components/customer/CartDrawer';
 import ProductsClientView from './ProductsClientView';
-import { prisma } from '@/lib/db';
+import { getAllProductsAndCategories } from '@/lib/catalog';
 
 export const dynamic = 'force-dynamic';
 
 export default async function ProductsPage() {
-  const [products, categories] = await Promise.all([
-    prisma.product.findMany({
-      where: { isActive: true },
-      include: {
-        category: true,
-        variants: {
-          orderBy: { price: 'asc' },
-        },
-      },
-      orderBy: [{ isFeatured: 'desc' }, { createdAt: 'desc' }],
-    }),
-    prisma.category.findMany({
-      orderBy: { displayOrder: 'asc' },
-    }),
-  ]);
+  const { products, categories } = await getAllProductsAndCategories();
 
   return (
     <div className="min-h-screen flex flex-col bg-transparent">

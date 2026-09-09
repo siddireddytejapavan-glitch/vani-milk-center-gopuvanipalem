@@ -1,21 +1,24 @@
 import React from 'react';
 import { prisma } from '@/lib/db';
+import { getShopSettings } from '@/lib/catalog';
 import OrderManager from './OrderManager';
 
 export const dynamic = 'force-dynamic';
 
 export default async function AdminOrdersPage() {
-  const [orders, settings] = await Promise.all([
-    prisma.order.findMany({
+  let orders: any[] = [];
+  try {
+    orders = await prisma.order.findMany({
       include: {
         items: true,
       },
       orderBy: { createdAt: 'desc' },
-    }),
-    prisma.shopSettings.findUnique({
-      where: { id: 'default-settings' },
-    }),
-  ]);
+    });
+  } catch (error) {
+    console.warn('Orders fetch skipped:', error);
+  }
+
+  const settings = await getShopSettings();
 
   return (
     <div className="max-w-7xl mx-auto">

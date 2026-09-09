@@ -38,27 +38,37 @@ export async function POST(request: Request) {
 
     const bytes = await uploadedFile.arrayBuffer();
     const buffer = Buffer.from(bytes);
+    const base64 = buffer.toString('base64');
+    const dataUrl = `data:${uploadedFile.type};base64,${base64}`;
 
-    const uploadsDir = path.join(process.cwd(), 'public', 'uploads');
-    await mkdir(uploadsDir, { recursive: true });
+    let finalUrl = dataUrl;
+    // In local development, optionally save to public/uploads if filesystem is writable
+    if (process.env.NODE_ENV !== 'production') {
+      try {
+        const uploadsDir = path.join(process.cwd(), 'public', 'uploads');
+        await mkdir(uploadsDir, { recursive: true });
 
-    // Generate safe unique filename
-    const origName = uploadedFile.name || 'product.jpg';
-    const ext = path.extname(origName) || '.jpg';
-    const cleanBase =
-      path
-        .basename(origName, ext)
-        .replace(/[^a-zA-Z0-9_-]/g, '_')
-        .slice(0, 30) || 'upload';
-    const filename = `${cleanBase}_${Date.now()}${ext}`;
-    const filePath = path.join(uploadsDir, filename);
+        const origName = uploadedFile.name || 'product.jpg';
+        const ext = path.extname(origName) || '.jpg';
+        const cleanBase =
+          path
+            .basename(origName, ext)
+            .replace(/[^a-zA-Z0-9_-]/g, '_')
+            .slice(0, 30) || 'upload';
+        const filename = `${cleanBase}_${Date.now()}${ext}`;
+        const filePath = path.join(uploadsDir, filename);
 
-    await writeFile(filePath, buffer);
+        await writeFile(filePath, buffer);
+        finalUrl = `/uploads/${filename}`;
+      } catch (fsError) {
+        console.warn('Local filesystem write failed, using data URL:', fsError);
+        finalUrl = dataUrl;
+      }
+    }
 
-    const publicUrl = `/uploads/${filename}`;
     return NextResponse.json({
       message: 'Image uploaded successfully',
-      url: publicUrl,
+      url: finalUrl,
     });
   } catch (error) {
     console.error('Image upload error:', error);

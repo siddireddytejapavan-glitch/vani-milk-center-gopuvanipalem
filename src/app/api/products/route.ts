@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getCurrentAdmin } from '@/lib/auth';
+import { getAllProductsAndCategories } from '@/lib/catalog';
 
 export async function GET(request: Request) {
   try {
@@ -54,11 +55,12 @@ export async function GET(request: Request) {
 
     return NextResponse.json({ products, categories });
   } catch (error) {
-    console.error('Failed to fetch products:', error);
-    return NextResponse.json(
-      { error: 'Failed to retrieve products' },
-      { status: 500 }
-    );
+    console.warn('Failed to fetch products from DB, returning resilient defaults:', (error as any)?.message || error);
+    const { searchParams } = new URL(request.url);
+    const categorySlug = searchParams.get('category') || undefined;
+    const search = searchParams.get('search') || undefined;
+    const fallback = await getAllProductsAndCategories(categorySlug, search);
+    return NextResponse.json({ products: fallback.products, categories: fallback.categories });
   }
 }
 

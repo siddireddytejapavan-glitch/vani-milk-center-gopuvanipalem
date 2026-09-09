@@ -1,24 +1,11 @@
 import React from 'react';
-import { prisma } from '@/lib/db';
+import { getAllProductsAndCategories } from '@/lib/catalog';
 import ProductManager from './ProductManager';
 
 export const dynamic = 'force-dynamic';
 
 export default async function AdminProductsPage() {
-  const [products, categories] = await Promise.all([
-    prisma.product.findMany({
-      include: {
-        category: true,
-        variants: {
-          orderBy: { price: 'asc' },
-        },
-      },
-      orderBy: { createdAt: 'desc' },
-    }),
-    prisma.category.findMany({
-      orderBy: { displayOrder: 'asc' },
-    }),
-  ]);
+  const { products, categories } = await getAllProductsAndCategories();
 
   return (
     <div className="max-w-7xl mx-auto">
