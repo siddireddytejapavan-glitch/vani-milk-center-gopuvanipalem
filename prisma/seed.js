@@ -183,6 +183,19 @@ async function main() {
         { packSize: '6 Pieces Pack', unit: 'box', price: 50, stockQuantity: 40, isAvailable: true },
       ],
     },
+    {
+      name: 'Curd Buckets (Functions & Marriages)',
+      slugCategory: 'curd',
+      description: 'Rich, thick, authentic curd packed in sturdy food-grade buckets for weddings, poojas, ceremonies, and catering.',
+      quality: 'Function Grade Thick Curd',
+      imageUrl: '/images/products/curd-bucket.jpg',
+      isFeatured: true,
+      variants: [
+        { packSize: '5 kg bucket', unit: 'bucket', price: 350, stockQuantity: 30, isAvailable: true },
+        { packSize: '10 kg bucket', unit: 'bucket', price: 500, stockQuantity: 25, isAvailable: true },
+        { packSize: '20 kg bucket', unit: 'bucket', price: 980, stockQuantity: 15, isAvailable: true },
+      ],
+    },
   ];
 
   for (const prod of productsData) {

@@ -11,7 +11,7 @@ export const metadata: Metadata = {
   keywords:
     'milk shop, fresh milk, curd bucket, marriage curd order, buttermilk, lassi, daily dairy products, WhatsApp dairy order',
   openGraph: {
-    title: 'Sri Krishna Milk & Dairy Center',
+    title: 'VANI MILK CENTER, GOPIVANIPALEM',
     description:
       'Pure and farm-fresh dairy products. Bulk marriage and function orders welcome. Easy WhatsApp ordering.',
     images: ['/images/hero-dairy.jpg'],

@@ -83,24 +83,36 @@ export async function PUT(
         .map((v: any) => v.id)
         .filter((vid: string) => Boolean(vid));
 
-      // Delete variants not in incoming payload
-      await prisma.productVariant.deleteMany({
+      const toDelete = await prisma.productVariant.findMany({
         where: {
           productId: id,
           id: { notIn: incomingVariantIds },
         },
+        select: { id: true },
       });
+      const toDeleteIds = toDelete.map((v) => v.id);
+      if (toDeleteIds.length > 0) {
+        await prisma.orderItem.updateMany({
+          where: { variantId: { in: toDeleteIds } },
+          data: { variantId: null },
+        });
+        await prisma.productVariant.deleteMany({
+          where: { id: { in: toDeleteIds } },
+        });
+      }
 
       // Upsert/update variants
       for (const v of variants) {
+        const parsedPrice = parseFloat(v.price) || 0;
+        const parsedStock = parseInt(v.stockQuantity, 10) || 0;
         if (v.id) {
           await prisma.productVariant.update({
             where: { id: v.id },
             data: {
               packSize: v.packSize,
               unit: v.unit || 'unit',
-              price: parseFloat(v.price),
-              stockQuantity: parseInt(v.stockQuantity, 10) || 0,
+              price: parsedPrice,
+              stockQuantity: parsedStock,
               isAvailable: v.isAvailable !== false,
             },
           });
@@ -110,8 +122,8 @@ export async function PUT(
               productId: id,
               packSize: v.packSize,
               unit: v.unit || 'unit',
-              price: parseFloat(v.price),
-              stockQuantity: parseInt(v.stockQuantity, 10) || 0,
+              price: parsedPrice,
+              stockQuantity: parsedStock,
               isAvailable: v.isAvailable !== false,
             },
           });
@@ -153,6 +165,16 @@ export async function DELETE(
     if (!existing) {
       return NextResponse.json({ error: 'Product not found' }, { status: 404 });
     }
+
+    // Disconnect order items to prevent foreign key constraint violations
+    await prisma.orderItem.updateMany({
+      where: { productId: id },
+      data: { productId: null, variantId: null },
+    });
+
+    await prisma.productVariant.deleteMany({
+      where: { productId: id },
+    });
 
     await prisma.product.delete({
       where: { id },

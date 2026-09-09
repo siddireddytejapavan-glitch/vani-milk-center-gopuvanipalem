@@ -13,15 +13,15 @@ export default async function AdminSettingsPage() {
     settings = await prisma.shopSettings.create({
       data: {
         id: 'default-settings',
-        shopName: 'Sri Krishna Milk & Dairy Center',
-        phone: '+91 98765 43210',
-        whatsappNumber: '919876543210',
-        address: 'Shop No. 4, Main Road, Near Clock Tower, Tuni, Andhra Pradesh',
+        shopName: 'VANI MILK CENTER, GOPIVANIPALEM',
+        phone: '7995597719',
+        whatsappNumber: '917995597719',
+        address: 'Gopivanipalem, Andhra Pradesh',
         openingHours: 'Morning 5:00 AM - Evening 10:00 PM',
-        googleMapsUrl: 'https://maps.google.com/?q=Dairy+Shop+Tuni',
+        googleMapsUrl: 'https://maps.google.com/?q=Gopivanipalem',
         logoUrl: '/images/shop-logo.svg',
-        aboutDescription: 'We are a local family-owned dairy shop committed to providing pure, farm-fresh milk, thick curd, lassi, buttermilk, and bulk function supplies for marriages, birthdays, and community festivals.',
-        bannerText: 'Fresh Farm Milk & Rich Curd Available Daily | Special Function Bulk Orders Undertaken',
+        aboutDescription: 'Welcome to Vani Milk Center, Gopivanipalem. We provide 100% pure & natural, hygienically processed milk, curd, ghee, paneer, buttermilk, and lassi for daily families, functions, and bulk catering orders.',
+        bannerText: '100% Pure & Natural Milk Products | Healthy Life Happy Life | Home Delivery: 7995597719',
       },
     });
   }

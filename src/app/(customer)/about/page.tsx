@@ -16,8 +16,8 @@ export default async function AboutPage() {
     where: { id: 'default-settings' },
   });
 
-  const shopName = settings?.shopName || 'Sri Krishna Milk & Dairy Center';
-  const whatsappNumber = settings?.whatsappNumber || '919876543210';
+  const shopName = settings?.shopName || 'VANI MILK CENTER, GOPIVANIPALEM';
+  const whatsappNumber = settings?.whatsappNumber || '917995597719';
   const whatsAppLink = generateEnquiryWhatsAppLink(whatsappNumber);
 
   return (

@@ -28,7 +28,8 @@ interface CartContextType {
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
-const CART_STORAGE_KEY = 'sri_krishna_dairy_cart_v1';
+const CART_STORAGE_KEY = 'vani_milk_center_cart_v1';
+const LEGACY_CART_STORAGE_KEY = 'sri_krishna_dairy_cart_v1';
 
 export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [items, setItems] = useState<CartItem[]>([]);
@@ -38,7 +39,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Load from localStorage on mount
   useEffect(() => {
     try {
-      const saved = localStorage.getItem(CART_STORAGE_KEY);
+      const saved = localStorage.getItem(CART_STORAGE_KEY) || localStorage.getItem(LEGACY_CART_STORAGE_KEY);
       if (saved) {
         setItems(JSON.parse(saved));
       }

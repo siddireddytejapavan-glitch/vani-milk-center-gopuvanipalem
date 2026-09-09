@@ -21,7 +21,7 @@ export default async function AdminOrdersPage() {
     <div className="max-w-7xl mx-auto">
       <OrderManager
         initialOrders={orders as any}
-        shopName={settings?.shopName || 'Sri Krishna Milk & Dairy Center'}
+        shopName={settings?.shopName || 'VANI MILK CENTER, GOPIVANIPALEM'}
       />
     </div>
   );

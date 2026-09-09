@@ -278,7 +278,7 @@ export default function OrderManager({
                           <span>Special Note / Requirements:</span>
                         </p>
                         <p className="text-slate-700 italic bg-white p-2 rounded-lg border border-slate-200">
-                          "{order.notes}"
+                          &ldquo;{order.notes}&rdquo;
                         </p>
                       </div>
                     )}

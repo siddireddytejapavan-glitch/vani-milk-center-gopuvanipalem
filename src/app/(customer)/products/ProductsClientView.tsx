@@ -58,8 +58,10 @@ export default function ProductsClientView({
 
     // Sorting
     list.sort((a, b) => {
-      const aMinPrice = Math.min(...a.variants.map((v) => v.price));
-      const bMinPrice = Math.min(...b.variants.map((v) => v.price));
+      const aPrices = a.variants?.map((v) => v.price) || [];
+      const bPrices = b.variants?.map((v) => v.price) || [];
+      const aMinPrice = aPrices.length > 0 ? Math.min(...aPrices) : 0;
+      const bMinPrice = bPrices.length > 0 ? Math.min(...bPrices) : 0;
 
       if (sortBy === 'price-asc') {
         return aMinPrice - bMinPrice;
@@ -197,7 +199,7 @@ export default function ProductsClientView({
           </div>
           <h3 className="text-lg font-bold text-slate-900">No dairy products found</h3>
           <p className="text-slate-500 text-sm mt-1 mb-6">
-            We couldn't find any products matching "{searchQuery}". Try searching for Milk, Curd, or Buttermilk.
+            We couldn&apos;t find any products matching &ldquo;{searchQuery}&rdquo;. Try searching for Milk, Curd, or Buttermilk.
           </p>
           <button
             onClick={() => {

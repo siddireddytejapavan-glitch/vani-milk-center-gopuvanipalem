@@ -275,11 +275,11 @@ export default function ProductManager({
 
   // Filtered products list
   const filteredProducts = products.filter((p) => {
-    const matchCategory = categoryFilter === 'all' || p.category.slug === categoryFilter;
+    const matchCategory = categoryFilter === 'all' || p.category?.slug === categoryFilter;
     const matchSearch =
       !searchQuery.trim() ||
       p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      p.variants.some((v) => v.packSize.toLowerCase().includes(searchQuery.toLowerCase()));
+      Boolean(p.variants?.some((v) => v.packSize.toLowerCase().includes(searchQuery.toLowerCase())));
     return matchCategory && matchSearch;
   });
 
@@ -403,14 +403,14 @@ export default function ProductManager({
                   {/* Category */}
                   <td className="px-6 py-4">
                     <span className="inline-block px-2.5 py-1 rounded-lg bg-sky-50 text-sky-700 text-xs font-bold border border-sky-100">
-                      {prod.category.name}
+                      {prod.category?.name || 'Dairy'}
                     </span>
                   </td>
 
                   {/* Variants & Prices */}
                   <td className="px-6 py-4">
                     <div className="flex flex-wrap gap-1.5 max-w-sm">
-                      {prod.variants.map((v) => (
+                      {(prod.variants || []).map((v) => (
                         <span
                           key={v.id}
                           className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-bold border ${
@@ -735,7 +735,7 @@ export default function ProductManager({
             <div>
               <h3 className="text-xl font-black text-slate-900">Confirm Deletion</h3>
               <p className="text-xs text-slate-500 mt-2 leading-relaxed">
-                Are you sure you want to delete <span className="font-bold text-slate-900">"{isDeleting.name}"</span>? This will permanently remove the product and all its pack size variants from the catalogue.
+                Are you sure you want to delete <span className="font-bold text-slate-900">&ldquo;{isDeleting?.name}&rdquo;</span>? This will permanently remove the product and all its pack size variants from the catalogue.
               </p>
             </div>
 

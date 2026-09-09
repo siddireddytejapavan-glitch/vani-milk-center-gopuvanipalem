@@ -11,15 +11,17 @@ export async function POST(request: Request) {
     }
 
     const data = await request.formData();
-    const file: File | null = data.get('file') as unknown as File;
+    const file = data.get('file');
 
-    if (!file) {
-      return NextResponse.json({ error: 'No file uploaded' }, { status: 400 });
+    if (!file || typeof file === 'string' || typeof (file as any).arrayBuffer !== 'function') {
+      return NextResponse.json({ error: 'No valid image file uploaded' }, { status: 400 });
     }
 
+    const uploadedFile = file as unknown as File;
+
     // Validate mime type
-    const validMimes = ['image/jpeg', 'image/png', 'image/webp', 'image/svg+xml'];
-    if (!validMimes.includes(file.type)) {
+    const validMimes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/svg+xml'];
+    if (!validMimes.includes(uploadedFile.type)) {
       return NextResponse.json(
         { error: 'Invalid file format. Please upload JPG, PNG, WEBP, or SVG.' },
         { status: 400 }
@@ -27,25 +29,27 @@ export async function POST(request: Request) {
     }
 
     // Limit to 5MB
-    if (file.size > 5 * 1024 * 1024) {
+    if (uploadedFile.size > 5 * 1024 * 1024) {
       return NextResponse.json(
         { error: 'File size too large. Maximum allowed size is 5MB.' },
         { status: 400 }
       );
     }
 
-    const bytes = await file.arrayBuffer();
+    const bytes = await uploadedFile.arrayBuffer();
     const buffer = Buffer.from(bytes);
 
     const uploadsDir = path.join(process.cwd(), 'public', 'uploads');
     await mkdir(uploadsDir, { recursive: true });
 
     // Generate safe unique filename
-    const ext = path.extname(file.name) || '.jpg';
-    const cleanBase = path
-      .basename(file.name, ext)
-      .replace(/[^a-zA-Z0-9_-]/g, '_')
-      .slice(0, 30);
+    const origName = uploadedFile.name || 'product.jpg';
+    const ext = path.extname(origName) || '.jpg';
+    const cleanBase =
+      path
+        .basename(origName, ext)
+        .replace(/[^a-zA-Z0-9_-]/g, '_')
+        .slice(0, 30) || 'upload';
     const filename = `${cleanBase}_${Date.now()}${ext}`;
     const filePath = path.join(uploadsDir, filename);
 

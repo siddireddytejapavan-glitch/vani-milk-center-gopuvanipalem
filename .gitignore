@@ -21,3 +21,6 @@ yarn-error.log*
 # (keep directory structure)
 public/uploads/*
 !public/uploads/.gitkeep
+
+# TypeScript build info
+*.tsbuildinfo

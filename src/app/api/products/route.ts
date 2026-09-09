@@ -109,7 +109,7 @@ export async function POST(request: Request) {
           create: variants.map((v: any) => ({
             packSize: v.packSize,
             unit: v.unit || 'unit',
-            price: parseFloat(v.price),
+            price: parseFloat(v.price) || 0,
             stockQuantity: parseInt(v.stockQuantity, 10) || 0,
             isAvailable: v.isAvailable !== false,
           })),

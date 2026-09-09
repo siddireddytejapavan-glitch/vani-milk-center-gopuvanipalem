@@ -178,7 +178,7 @@ export default function SettingsForm({
                 required
                 value={shopName}
                 onChange={(e) => setShopName(e.target.value)}
-                placeholder="e.g. Sri Krishna Milk & Dairy Center"
+                placeholder="e.g. VANI MILK CENTER, GOPIVANIPALEM"
                 className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-500"
               />
             </div>
@@ -194,7 +194,7 @@ export default function SettingsForm({
                   required
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
-                  placeholder="+91 98765 43210"
+                  placeholder="7995597719"
                   className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-500"
                 />
               </div>
@@ -210,14 +210,14 @@ export default function SettingsForm({
               </label>
             </div>
             <p className="text-xs text-emerald-800">
-              All customer orders and inquiries are sent to this WhatsApp number. Do not include spaces or '+' (e.g. <span className="font-mono font-bold">919876543210</span> for India).
+              All customer orders and inquiries are sent to this WhatsApp number. Do not include spaces or &apos;+&apos; (e.g. <span className="font-mono font-bold">917995597719</span> for India).
             </p>
             <input
               type="text"
               required
               value={whatsappNumber}
               onChange={(e) => setWhatsappNumber(e.target.value)}
-              placeholder="919876543210"
+              placeholder="917995597719"
               className="w-full max-w-sm px-3.5 py-2.5 rounded-xl border border-emerald-300 text-sm font-mono font-bold text-emerald-950 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
             />
           </div>
