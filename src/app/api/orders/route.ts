@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/db';
+import { prisma, isDatabaseConfigured } from '@/lib/db';
 import { getCurrentAdmin } from '@/lib/auth';
 import {
   generateOrderWhatsAppMessage,
@@ -40,17 +40,21 @@ export async function POST(request: Request) {
     // SERVER-SIDE PRICE AND STOCK VALIDATION
     const variantIds = items.map((i: any) => i.variantId);
     let dbVariants: any[] = [];
-    try {
-      dbVariants = await prisma.productVariant.findMany({
-        where: {
-          id: { in: variantIds },
-        },
-        include: {
-          product: true,
-        },
-      });
-    } catch (e) {
-      console.warn('Database query for variants failed, checking catalog defaults:', (e as any)?.message || e);
+    if (isDatabaseConfigured()) {
+      try {
+        dbVariants = await prisma.productVariant.findMany({
+          where: {
+            id: { in: variantIds },
+          },
+          include: {
+            product: true,
+          },
+        });
+      } catch (e) {
+        if (process.env.NODE_ENV !== 'production') {
+          console.warn('Database query for variants failed, checking catalog defaults:', (e as any)?.message || e);
+        }
+      }
     }
 
     const variantMap = new Map(dbVariants.map((v) => [v.id, v]));
@@ -151,56 +155,65 @@ export async function POST(request: Request) {
 
     // Create Order and OrderItems in database transaction & decrement stock (with safe fallback)
     let createdOrder: any = null;
-    try {
-      createdOrder = await prisma.$transaction(async (tx) => {
-        const order = await tx.order.create({
-          data: {
-            customerName: customerName.trim(),
-            customerPhone: cleanPhone,
-            address: address.trim(),
-            notes: notes?.trim() || null,
-            totalAmount: calculatedTotal,
-            status: 'Pending',
-            isFunctionOrder,
-            items: {
-              create: verifiedOrderItems.map((vi) => ({
-                productId: vi.productId.startsWith('prod-') ? null : vi.productId,
-                variantId: vi.variantId.startsWith('var-') ? null : vi.variantId,
-                productName: vi.productName,
-                packSize: vi.packSize,
-                quantity: vi.quantity,
-                unitPrice: vi.unitPrice,
-                totalPrice: vi.totalPrice,
-              })),
+    if (isDatabaseConfigured()) {
+      try {
+        createdOrder = await prisma.$transaction(async (tx) => {
+          const order = await tx.order.create({
+            data: {
+              customerName: customerName.trim(),
+              customerPhone: cleanPhone,
+              address: address.trim(),
+              notes: notes?.trim() || null,
+              totalAmount: calculatedTotal,
+              status: 'Pending',
+              isFunctionOrder,
+              items: {
+                create: verifiedOrderItems.map((vi) => ({
+                  productId: vi.productId.startsWith('prod-') ? null : vi.productId,
+                  variantId: vi.variantId.startsWith('var-') ? null : vi.variantId,
+                  productName: vi.productName,
+                  packSize: vi.packSize,
+                  quantity: vi.quantity,
+                  unitPrice: vi.unitPrice,
+                  totalPrice: vi.totalPrice,
+                })),
+              },
             },
-          },
-          include: {
-            items: true,
-          },
-        });
+            include: {
+              items: true,
+            },
+          });
 
-        // Reduce stock for ordered variants
-        for (const vi of verifiedOrderItems) {
-          if (!vi.variantId.startsWith('var-')) {
-            try {
-              await tx.productVariant.update({
-                where: { id: vi.variantId },
-                data: {
-                  stockQuantity: {
-                    decrement: vi.quantity,
+          // Reduce stock for ordered variants
+          for (const vi of verifiedOrderItems) {
+            if (!vi.variantId.startsWith('var-')) {
+              try {
+                await tx.productVariant.update({
+                  where: { id: vi.variantId },
+                  data: {
+                    stockQuantity: {
+                      decrement: vi.quantity,
+                    },
                   },
-                },
-              });
-            } catch (stockErr) {
-              console.warn('Stock decrement skipped for variant:', vi.variantId);
+                });
+              } catch (stockErr) {
+                if (process.env.NODE_ENV !== 'production') {
+                  console.warn('Stock decrement skipped for variant:', vi.variantId);
+                }
+              }
             }
           }
-        }
 
-        return order;
-      });
-    } catch (dbErr) {
-      console.warn('Database write failed during order creation, using direct order reference:', dbErr);
+          return order;
+        });
+      } catch (dbErr) {
+        if (process.env.NODE_ENV !== 'production') {
+          console.warn('Database write failed during order creation, using direct order reference:', dbErr);
+        }
+      }
+    }
+
+    if (!createdOrder) {
       createdOrder = {
         id: 'VM' + Math.floor(100000 + Math.random() * 900000).toString(),
         customerName: customerName.trim(),
@@ -242,7 +255,9 @@ export async function POST(request: Request) {
       { status: 201 }
     );
   } catch (error) {
-    console.error('Checkout error:', error);
+    if (process.env.NODE_ENV !== 'production') {
+      console.error('Checkout error:', error);
+    }
     return NextResponse.json(
       { error: 'Failed to process order. Please try again.' },
       { status: 500 }
@@ -255,6 +270,10 @@ export async function GET(request: Request) {
     const admin = await getCurrentAdmin();
     if (!admin) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    if (!isDatabaseConfigured()) {
+      return NextResponse.json({ orders: [] });
     }
 
     const { searchParams } = new URL(request.url);

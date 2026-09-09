@@ -1,23 +1,28 @@
 import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/db';
+import { prisma, isDatabaseConfigured } from '@/lib/db';
 import { getCurrentAdmin } from '@/lib/auth';
 import { getAllProductsAndCategories } from '@/lib/catalog';
 
 export async function GET(request: Request) {
-  try {
-    const { searchParams } = new URL(request.url);
-    const categorySlug = searchParams.get('category');
-    const search = searchParams.get('search');
-    const isAdmin = searchParams.get('admin') === 'true';
+  const { searchParams } = new URL(request.url);
+  const categorySlug = searchParams.get('category') || undefined;
+  const search = searchParams.get('search') || undefined;
+  const isAdmin = searchParams.get('admin') === 'true';
 
-    // If requesting admin view, verify session
-    if (isAdmin) {
-      const admin = await getCurrentAdmin();
-      if (!admin) {
-        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-      }
+  // If requesting admin view, verify session
+  if (isAdmin) {
+    const admin = await getCurrentAdmin();
+    if (!admin) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+  }
 
+  if (!isDatabaseConfigured()) {
+    const fallback = await getAllProductsAndCategories(categorySlug, search);
+    return NextResponse.json({ products: fallback.products, categories: fallback.categories });
+  }
+
+  try {
     const whereClause: any = {};
     if (!isAdmin) {
       whereClause.isActive = true;
@@ -55,10 +60,9 @@ export async function GET(request: Request) {
 
     return NextResponse.json({ products, categories });
   } catch (error) {
-    console.warn('Failed to fetch products from DB, returning resilient defaults:', (error as any)?.message || error);
-    const { searchParams } = new URL(request.url);
-    const categorySlug = searchParams.get('category') || undefined;
-    const search = searchParams.get('search') || undefined;
+    if (process.env.NODE_ENV !== 'production') {
+      console.warn('Failed to fetch products from DB, returning resilient defaults:', (error as any)?.message || error);
+    }
     const fallback = await getAllProductsAndCategories(categorySlug, search);
     return NextResponse.json({ products: fallback.products, categories: fallback.categories });
   }

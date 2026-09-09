@@ -1,6 +1,6 @@
 import React from 'react';
 import Link from 'next/link';
-import { prisma } from '@/lib/db';
+import { prisma, isDatabaseConfigured } from '@/lib/db';
 import {
   Package,
   CheckCircle,
@@ -35,45 +35,52 @@ export default async function AdminDashboardPage() {
   let isDbConnected = false;
 
   // Resilient database fetch with comprehensive error handling
-  try {
-    const [
-      dbTotalProducts,
-      dbActiveProducts,
-      dbVariants,
-      dbTotalOrders,
-      dbPendingOrders,
-      dbFunctionOrders,
-      dbRecentOrders,
-      revenueAggregate,
-    ] = await Promise.all([
-      prisma.product.count(),
-      prisma.product.count({ where: { isActive: true } }),
-      prisma.productVariant.findMany({ select: { stockQuantity: true, isAvailable: true } }),
-      prisma.order.count(),
-      prisma.order.count({ where: { status: 'Pending' } }),
-      prisma.order.count({ where: { isFunctionOrder: true } }),
-      prisma.order.findMany({
-        take: 8,
-        orderBy: { createdAt: 'desc' },
-        include: { items: true },
-      }),
-      prisma.order.aggregate({
-        _sum: { totalAmount: true },
-        where: { status: { not: 'Cancelled' } },
-      }),
-    ]);
+  if (isDatabaseConfigured()) {
+    try {
+      const [
+        dbTotalProducts,
+        dbActiveProducts,
+        dbVariants,
+        dbTotalOrders,
+        dbPendingOrders,
+        dbFunctionOrders,
+        dbRecentOrders,
+        revenueAggregate,
+      ] = await Promise.all([
+        prisma.product.count(),
+        prisma.product.count({ where: { isActive: true } }),
+        prisma.productVariant.findMany({ select: { stockQuantity: true, isAvailable: true } }),
+        prisma.order.count(),
+        prisma.order.count({ where: { status: 'Pending' } }),
+        prisma.order.count({ where: { isFunctionOrder: true } }),
+        prisma.order.findMany({
+          take: 8,
+          orderBy: { createdAt: 'desc' },
+          include: { items: true },
+        }),
+        prisma.order.aggregate({
+          _sum: { totalAmount: true },
+          where: { status: { not: 'Cancelled' } },
+        }),
+      ]);
 
-    totalProducts = dbTotalProducts;
-    activeProducts = dbActiveProducts;
-    outOfStockCount = dbVariants.filter((v) => !v.isAvailable || v.stockQuantity <= 0).length;
-    totalOrders = dbTotalOrders;
-    pendingOrders = dbPendingOrders;
-    functionOrders = dbFunctionOrders;
-    recentOrders = dbRecentOrders || [];
-    totalRevenue = revenueAggregate._sum.totalAmount || 0;
-    isDbConnected = true;
-  } catch (error) {
-    console.warn('Admin dashboard DB metrics query failed, using catalog baseline:', (error as any)?.message || error);
+      totalProducts = dbTotalProducts;
+      activeProducts = dbActiveProducts;
+      outOfStockCount = dbVariants.filter((v) => !v.isAvailable || v.stockQuantity <= 0).length;
+      totalOrders = dbTotalOrders;
+      pendingOrders = dbPendingOrders;
+      functionOrders = dbFunctionOrders;
+      recentOrders = dbRecentOrders || [];
+      totalRevenue = revenueAggregate._sum.totalAmount || 0;
+      isDbConnected = true;
+    } catch (error) {
+      if (process.env.NODE_ENV !== 'production') {
+        console.warn('Admin dashboard DB metrics query failed, using catalog baseline:', (error as any)?.message || error);
+      }
+    }
+  }
+
+  if (!isDbConnected) {
     // Baseline fallback from DEFAULT_PRODUCTS
     const allFallbackVariants = DEFAULT_PRODUCTS.flatMap((p) => p.variants);
     outOfStockCount = allFallbackVariants.filter((v) => !v.isAvailable || v.stockQuantity <= 0).length;

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/db';
+import { prisma, isDatabaseConfigured } from '@/lib/db';
 import { verifyPassword, signToken, AUTH_COOKIE_NAME } from '@/lib/auth';
 
 export async function POST(request: Request) {
@@ -14,12 +14,16 @@ export async function POST(request: Request) {
     }
 
     let user: any = null;
-    try {
-      user = await prisma.user.findUnique({
-        where: { email: email.toLowerCase().trim() },
-      });
-    } catch (dbErr) {
-      console.warn('Database query failed during admin login, falling back to environment check:', (dbErr as any)?.message || dbErr);
+    if (isDatabaseConfigured()) {
+      try {
+        user = await prisma.user.findUnique({
+          where: { email: email.toLowerCase().trim() },
+        });
+      } catch (dbErr) {
+        if (process.env.NODE_ENV !== 'production') {
+          console.warn('Database query failed during admin login, falling back to environment check:', (dbErr as any)?.message || dbErr);
+        }
+      }
     }
 
     const defaultAdminEmail = (process.env.ADMIN_EMAIL || 'siddreddylakshmankumar@gmail.com').toLowerCase().trim();

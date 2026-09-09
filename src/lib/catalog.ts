@@ -1,4 +1,4 @@
-import { prisma } from './db';
+import { prisma, isDatabaseConfigured } from './db';
 
 export interface CategoryData {
   id: string;
@@ -223,6 +223,9 @@ export const DEFAULT_PRODUCTS: ProductData[] = [
 ];
 
 export async function getShopSettings(): Promise<ShopSettingsData> {
+  if (!isDatabaseConfigured()) {
+    return DEFAULT_SHOP_SETTINGS;
+  }
   try {
     const settings = await prisma.shopSettings.findUnique({
       where: { id: 'default-settings' },
@@ -231,7 +234,9 @@ export async function getShopSettings(): Promise<ShopSettingsData> {
       return settings as ShopSettingsData;
     }
   } catch (error) {
-    console.warn('Database query for shop settings failed, using defaults:', (error as any)?.message || error);
+    if (process.env.NODE_ENV !== 'production') {
+      console.warn('Database query for shop settings failed, using defaults:', (error as any)?.message || error);
+    }
   }
   return DEFAULT_SHOP_SETTINGS;
 }
@@ -240,6 +245,14 @@ export async function getFeaturedProductsAndCategories(): Promise<{
   products: ProductData[];
   categories: CategoryData[];
 }> {
+  if (!isDatabaseConfigured()) {
+    const featured = DEFAULT_PRODUCTS.filter((p) => p.isFeatured);
+    return {
+      products: featured.length > 0 ? featured : DEFAULT_PRODUCTS,
+      categories: DEFAULT_CATEGORIES,
+    };
+  }
+
   try {
     const [dbProducts, dbCategories] = await Promise.all([
       prisma.product.findMany({
@@ -264,13 +277,39 @@ export async function getFeaturedProductsAndCategories(): Promise<{
       };
     }
   } catch (error) {
-    console.warn('Database query for featured products failed, using defaults:', (error as any)?.message || error);
+    if (process.env.NODE_ENV !== 'production') {
+      console.warn('Database query for featured products failed, using defaults:', (error as any)?.message || error);
+    }
   }
 
   // Graceful fallback: return top featured defaults
   const featured = DEFAULT_PRODUCTS.filter((p) => p.isFeatured);
   return {
     products: featured.length > 0 ? featured : DEFAULT_PRODUCTS,
+    categories: DEFAULT_CATEGORIES,
+  };
+}
+
+function getFilteredFallbackProducts(categorySlug?: string, search?: string) {
+  let filtered = [...DEFAULT_PRODUCTS];
+
+  if (categorySlug && categorySlug !== 'all') {
+    filtered = filtered.filter((p) => p.category?.slug === categorySlug);
+  }
+
+  if (search && search.trim()) {
+    const q = search.trim().toLowerCase();
+    filtered = filtered.filter(
+      (p) =>
+        p.name.toLowerCase().includes(q) ||
+        p.description.toLowerCase().includes(q) ||
+        p.quality.toLowerCase().includes(q) ||
+        p.variants.some((v) => v.packSize.toLowerCase().includes(q))
+    );
+  }
+
+  return {
+    products: filtered,
     categories: DEFAULT_CATEGORIES,
   };
 }
@@ -282,6 +321,10 @@ export async function getAllProductsAndCategories(
   products: ProductData[];
   categories: CategoryData[];
 }> {
+  if (!isDatabaseConfigured()) {
+    return getFilteredFallbackProducts(categorySlug, search);
+  }
+
   try {
     const whereClause: any = { isActive: true };
 
@@ -321,31 +364,12 @@ export async function getAllProductsAndCategories(
       };
     }
   } catch (error) {
-    console.warn('Database query for all products failed, using defaults:', (error as any)?.message || error);
+    if (process.env.NODE_ENV !== 'production') {
+      console.warn('Database query for all products failed, using defaults:', (error as any)?.message || error);
+    }
   }
 
-  // Graceful fallback filtering
-  let filtered = [...DEFAULT_PRODUCTS];
-
-  if (categorySlug && categorySlug !== 'all') {
-    filtered = filtered.filter((p) => p.category?.slug === categorySlug);
-  }
-
-  if (search && search.trim()) {
-    const q = search.trim().toLowerCase();
-    filtered = filtered.filter(
-      (p) =>
-        p.name.toLowerCase().includes(q) ||
-        p.description.toLowerCase().includes(q) ||
-        p.quality.toLowerCase().includes(q) ||
-        p.variants.some((v) => v.packSize.toLowerCase().includes(q))
-    );
-  }
-
-  return {
-    products: filtered,
-    categories: DEFAULT_CATEGORIES,
-  };
+  return getFilteredFallbackProducts(categorySlug, search);
 }
 
 export function findFallbackVariant(variantId: string): { variant: VariantData; product: ProductData } | null {

@@ -1,10 +1,14 @@
 import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/db';
+import { prisma, isDatabaseConfigured } from '@/lib/db';
 import { getCurrentAdmin } from '@/lib/auth';
 import { cleanWhatsAppNumber } from '@/lib/whatsapp';
 import { DEFAULT_SHOP_SETTINGS } from '@/lib/catalog';
 
 export async function GET() {
+  if (!isDatabaseConfigured()) {
+    return NextResponse.json({ settings: DEFAULT_SHOP_SETTINGS });
+  }
+
   try {
     let settings = await prisma.shopSettings.findUnique({
       where: { id: 'default-settings' },
@@ -29,7 +33,9 @@ export async function GET() {
 
     return NextResponse.json({ settings });
   } catch (error) {
-    console.warn('Database error in /api/settings, returning default settings:', (error as any)?.message || error);
+    if (process.env.NODE_ENV !== 'production') {
+      console.warn('Database error in /api/settings, returning default settings:', (error as any)?.message || error);
+    }
     return NextResponse.json({ settings: DEFAULT_SHOP_SETTINGS });
   }
 }

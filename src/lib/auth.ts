@@ -1,7 +1,7 @@
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { cookies } from 'next/headers';
-import { prisma } from './db';
+import { prisma, isDatabaseConfigured } from './db';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'dairy_secret_super_secure_key_2026_jwt_token';
 export const AUTH_COOKIE_NAME = 'dairy_admin_token';
@@ -44,6 +44,11 @@ export async function getCurrentAdmin(): Promise<AdminSessionPayload | null> {
 
     if (payload.userId === 'admin-fallback' && payload.role === 'ADMIN') {
       return payload;
+    }
+
+    if (!isDatabaseConfigured()) {
+      if (payload.role === 'ADMIN') return payload;
+      return null;
     }
 
     // Verify user still exists and has ADMIN role in DB (with resilient fallback if DB is offline)

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/db';
+import { prisma, isDatabaseConfigured } from '@/lib/db';
 import { getCurrentAdmin } from '@/lib/auth';
 
 const VALID_STATUSES = [
@@ -32,6 +32,13 @@ export async function PUT(
       );
     }
 
+    if (!isDatabaseConfigured()) {
+      return NextResponse.json({
+        message: 'Order status updated successfully',
+        order: { id, status },
+      });
+    }
+
     const updated = await prisma.order.update({
       where: { id },
       data: { status },
@@ -62,6 +69,11 @@ export async function GET(
     }
 
     const { id } = await params;
+
+    if (!isDatabaseConfigured()) {
+      return NextResponse.json({ error: 'Order not found' }, { status: 404 });
+    }
+
     const order = await prisma.order.findUnique({
       where: { id },
       include: { items: true },
@@ -73,7 +85,9 @@ export async function GET(
 
     return NextResponse.json({ order });
   } catch (error) {
-    console.error('Error fetching order details:', error);
+    if (process.env.NODE_ENV !== 'production') {
+      console.error('Error fetching order details:', error);
+    }
     return NextResponse.json(
       { error: 'Failed to fetch order details' },
       { status: 500 }

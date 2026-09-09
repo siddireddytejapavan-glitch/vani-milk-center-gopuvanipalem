@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/db';
+import { prisma, isDatabaseConfigured } from '@/lib/db';
 import { getCurrentAdmin } from '@/lib/auth';
+import { DEFAULT_PRODUCTS } from '@/lib/catalog';
 
 export async function GET(
   request: Request,
@@ -8,6 +9,13 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
+
+    if (!isDatabaseConfigured()) {
+      const fallback = DEFAULT_PRODUCTS.find((p) => p.id === id);
+      if (fallback) return NextResponse.json({ product: fallback });
+      return NextResponse.json({ error: 'Product not found' }, { status: 404 });
+    }
+
     const product = await prisma.product.findUnique({
       where: { id },
       include: {
@@ -22,7 +30,9 @@ export async function GET(
 
     return NextResponse.json({ product });
   } catch (error) {
-    console.error('Error fetching product:', error);
+    if (process.env.NODE_ENV !== 'production') {
+      console.error('Error fetching product:', error);
+    }
     return NextResponse.json(
       { error: 'Failed to fetch product' },
       { status: 500 }
