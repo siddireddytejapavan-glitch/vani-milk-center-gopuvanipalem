@@ -1,14 +1,16 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Phone, MessageCircle, MapPin, Clock, ExternalLink } from 'lucide-react';
+import { Phone, MessageCircle, MapPin, Clock, ExternalLink, Shield } from 'lucide-react';
 import { useShopSettings } from '@/context/ShopSettingsContext';
 import { generateEnquiryWhatsAppLink } from '@/lib/whatsapp';
+import AdminLoginModal from '@/components/customer/AdminLoginModal';
 
 export default function Footer() {
   const { settings } = useShopSettings();
+  const [isAdminModalOpen, setIsAdminModalOpen] = useState(false);
   const currentYear = new Date().getFullYear();
   const whatsAppLink = generateEnquiryWhatsAppLink(settings.whatsappNumber);
 
@@ -105,7 +107,14 @@ export default function Footer() {
             <div className="space-y-3 text-sm">
               <div className="flex items-start gap-2.5">
                 <MapPin className="w-5 h-5 text-sky-400 shrink-0 mt-0.5" />
-                <span>{settings.address}</span>
+                <div>
+                  <span className="inline-block text-[11px] font-bold text-sky-300 bg-sky-950/80 px-2 py-0.5 rounded border border-sky-800/60 mb-1">
+                    Plus Code: 659J+CX2
+                  </span>
+                  <p className="text-slate-300 text-xs sm:text-sm leading-relaxed">
+                    {settings.address}
+                  </p>
+                </div>
               </div>
               <div className="flex items-center gap-2.5">
                 <Clock className="w-5 h-5 text-sky-400 shrink-0" />
@@ -149,17 +158,23 @@ export default function Footer() {
 
         {/* Bottom copyright & admin login link */}
         <div className="pt-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-500">
-          <p>© 2026 {settings.shopName}. All Rights Reserved.</p>
-          <div className="flex items-center space-x-6">
-            <Link
-              href="/admin/login"
-              className="hover:text-slate-400 transition-colors"
+          <p>© {currentYear} {settings.shopName}. All Rights Reserved.</p>
+          <div className="flex items-center space-x-4">
+            <button
+              onClick={() => setIsAdminModalOpen(true)}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-colors cursor-pointer border border-slate-700 font-semibold"
             >
-              Shop Owner Login
-            </Link>
+              <Shield className="w-3.5 h-3.5 text-sky-400" />
+              <span>Shop Owner &amp; Admin Login</span>
+            </button>
           </div>
         </div>
       </div>
+
+      <AdminLoginModal
+        isOpen={isAdminModalOpen}
+        onClose={() => setIsAdminModalOpen(false)}
+      />
     </footer>
   );
 }

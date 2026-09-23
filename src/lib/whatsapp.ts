@@ -6,6 +6,9 @@ export interface OrderItemFormat {
   totalPrice: number;
 }
 
+export const SHOP_ORIGIN_ADDRESS = '659J+CX2 Vani milk, Gopuvanipalem, Andhra Pradesh 521002';
+export const SHOP_ORIGIN_QUERY = '659J%2BCX2+Vani+milk%2C+Gopuvanipalem%2C+Andhra+Pradesh+521002';
+
 export interface OrderWhatsAppDetails {
   customerName: string;
   customerPhone: string;
@@ -14,6 +17,10 @@ export interface OrderWhatsAppDetails {
   totalAmount: number;
   notes?: string | null;
   orderId?: string;
+  latitude?: number | null;
+  longitude?: number | null;
+  liveLocationUrl?: string | null;
+  deliveryRouteUrl?: string | null;
 }
 
 export function cleanWhatsAppNumber(num: string): string {
@@ -34,6 +41,62 @@ export function formatCurrencyINR(amount: number): string {
   }).format(amount);
 }
 
+export function generateLiveLocationMapUrl(lat: number, lng: number): string {
+  return `https://maps.google.com/?q=${lat},${lng}`;
+}
+
+export function generateDeliveryRouteUrl(
+  destinationAddress: string,
+  lat?: number | null,
+  lng?: number | null
+): string {
+  if (typeof lat === 'number' && typeof lng === 'number' && !isNaN(lat) && !isNaN(lng)) {
+    return `https://www.google.com/maps/dir/?api=1&origin=${SHOP_ORIGIN_QUERY}&destination=${lat},${lng}`;
+  }
+  return `https://www.google.com/maps/dir/?api=1&origin=${SHOP_ORIGIN_QUERY}&destination=${encodeURIComponent(
+    destinationAddress || 'Gopuvanipalem'
+  )}`;
+}
+
+export function generateDeliveryBoyDispatchMessage(details: {
+  orderId: string;
+  customerName: string;
+  customerPhone: string;
+  address: string;
+  totalAmount: number;
+  items: OrderItemFormat[];
+  deliveryRouteUrl: string;
+  liveLocationUrl?: string | null;
+  notes?: string | null;
+}): string {
+  let msg = `🛵 *DELIVERY DISPATCH — VANI MILK CENTER*\n`;
+  msg += `Order Ref: #${details.orderId.slice(-6).toUpperCase()}\n`;
+  msg += `---------------------------------\n`;
+  msg += `👤 *Customer:* ${details.customerName}\n`;
+  msg += `📞 *Mobile:* ${details.customerPhone}\n`;
+  msg += `🏠 *Delivery Address:* ${details.address}\n\n`;
+
+  if (details.liveLocationUrl) {
+    msg += `📍 *Customer Live GPS Pin:* ${details.liveLocationUrl}\n\n`;
+  }
+
+  msg += `🗺️ *Turn-by-turn Navigation Route:*\n${details.deliveryRouteUrl}\n\n`;
+
+  msg += `📦 *Items to Deliver:*\n`;
+  details.items.forEach((item, i) => {
+    msg += `${i + 1}. ${item.productName} (${item.packSize}) x ${item.quantity}\n`;
+  });
+
+  msg += `\n💰 *Collect Amount:* ${formatCurrencyINR(details.totalAmount)}\n`;
+
+  if (details.notes && details.notes.trim()) {
+    msg += `📝 *Notes:* ${details.notes.trim()}\n`;
+  }
+
+  msg += `\n*Start delivery navigation from Vani Milk Center, Gopuvanipalem!*`;
+  return msg;
+}
+
 export function generateOrderWhatsAppMessage(details: OrderWhatsAppDetails): string {
   let msg = `*New Dairy Product Order*\n`;
   if (details.orderId) {
@@ -42,6 +105,23 @@ export function generateOrderWhatsAppMessage(details: OrderWhatsAppDetails): str
   msg += `*Customer Name:* ${details.customerName}\n`;
   msg += `*Mobile:* ${details.customerPhone}\n`;
   msg += `*Address:* ${details.address}\n\n`;
+
+  // Include customer live GPS location if captured
+  const liveLocation =
+    details.liveLocationUrl ||
+    (typeof details.latitude === 'number' && typeof details.longitude === 'number'
+      ? generateLiveLocationMapUrl(details.latitude, details.longitude)
+      : null);
+
+  if (liveLocation) {
+    msg += `📍 *Customer Live GPS Pin:* ${liveLocation}\n`;
+  }
+
+  // Include delivery boy navigation route from Vani Milk Center (Gopuvanipalem)
+  const routeUrl =
+    details.deliveryRouteUrl ||
+    generateDeliveryRouteUrl(details.address, details.latitude, details.longitude);
+  msg += `🛵 *Delivery Boy Navigation Route:*\n${routeUrl}\n\n`;
 
   msg += `*Products:*\n`;
   details.items.forEach((item, index) => {

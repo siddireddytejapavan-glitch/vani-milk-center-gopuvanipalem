@@ -14,7 +14,7 @@ export const dynamic = 'force-dynamic';
 export default async function AboutPage() {
   const settings = await getShopSettings();
 
-  const shopName = settings?.shopName || 'VANI MILK CENTER, GOPIVANIPALEM';
+  const shopName = settings?.shopName || 'VANI MILK CENTER, GOPUVANIPALEM';
   const whatsappNumber = settings?.whatsappNumber || '917995597719';
   const whatsAppLink = generateEnquiryWhatsAppLink(whatsappNumber);
 

@@ -30,6 +30,15 @@ export async function POST(request: Request) {
     const defaultAdminPassword = process.env.ADMIN_PASSWORD || 'VANI@MILK';
 
     const inputEmail = email.toLowerCase().trim();
+    // Strict admin-only verification: check if provided email is an authorized admin
+    const isAdminEmail = inputEmail === defaultAdminEmail || (user && user.role === 'ADMIN');
+    if (!isAdminEmail) {
+      return NextResponse.json(
+        { error: 'Access restricted: Only authorized admin email can log in.' },
+        { status: 401 }
+      );
+    }
+
     let isValid = false;
     let sessionUser = {
       id: 'admin-fallback',
@@ -54,7 +63,7 @@ export async function POST(request: Request) {
 
     if (!isValid) {
       return NextResponse.json(
-        { error: 'Invalid email or password' },
+        { error: 'Invalid password. Please check your credentials and try again.' },
         { status: 401 }
       );
     }
@@ -70,10 +79,10 @@ export async function POST(request: Request) {
     const response = NextResponse.json({
       message: 'Logged in successfully',
       user: {
-        id: user.id,
-        email: user.email,
-        name: user.name,
-        role: user.role,
+        id: sessionUser.id,
+        email: sessionUser.email,
+        name: sessionUser.name,
+        role: sessionUser.role,
       },
     });
 

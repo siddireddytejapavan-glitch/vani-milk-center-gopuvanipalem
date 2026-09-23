@@ -5,13 +5,24 @@ import {
   generateOrderWhatsAppMessage,
   generateWhatsAppLink,
   cleanWhatsAppNumber,
+  generateDeliveryRouteUrl,
+  generateLiveLocationMapUrl,
 } from '@/lib/whatsapp';
 import { findFallbackVariant, getShopSettings } from '@/lib/catalog';
 
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { customerName, customerPhone, address, notes, items } = body;
+    const {
+      customerName,
+      customerPhone,
+      address,
+      notes,
+      items,
+      latitude,
+      longitude,
+      liveLocationUrl,
+    } = body;
 
     // Validate customer info
     if (!customerName || !customerName.trim()) {
@@ -231,7 +242,14 @@ export async function POST(request: Request) {
       settings?.whatsappNumber || process.env.SHOP_WHATSAPP_NUMBER || '917995597719'
     );
 
-    // Format WhatsApp message
+    // Compute live location and delivery boy navigation route from Vani Milk Center
+    const numLat = typeof latitude === 'number' && !isNaN(latitude) ? latitude : null;
+    const numLng = typeof longitude === 'number' && !isNaN(longitude) ? longitude : null;
+    const customerLiveMapUrl =
+      liveLocationUrl || (numLat && numLng ? generateLiveLocationMapUrl(numLat, numLng) : null);
+    const deliveryRouteUrl = generateDeliveryRouteUrl(createdOrder.address, numLat, numLng);
+
+    // Format WhatsApp message with live location and delivery route
     const whatsAppMessage = generateOrderWhatsAppMessage({
       orderId: createdOrder.id,
       customerName: createdOrder.customerName,
@@ -240,6 +258,10 @@ export async function POST(request: Request) {
       items: verifiedOrderItems,
       totalAmount: calculatedTotal,
       notes: createdOrder.notes,
+      latitude: numLat,
+      longitude: numLng,
+      liveLocationUrl: customerLiveMapUrl,
+      deliveryRouteUrl,
     });
 
     const whatsAppLink = generateWhatsAppLink(targetWhatsAppNumber, whatsAppMessage);
@@ -251,6 +273,8 @@ export async function POST(request: Request) {
         whatsAppLink,
         whatsAppMessage,
         shopWhatsAppNumber: targetWhatsAppNumber,
+        deliveryRouteUrl,
+        liveLocationUrl: customerLiveMapUrl,
       },
       { status: 201 }
     );

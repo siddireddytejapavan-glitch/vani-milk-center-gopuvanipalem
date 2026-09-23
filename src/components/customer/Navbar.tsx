@@ -4,13 +4,15 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
-import { ShoppingBag, MessageCircle, Menu, X, Phone, Clock } from 'lucide-react';
+import { ShoppingBag, MessageCircle, Menu, X, Phone, Clock, MapPin, Shield } from 'lucide-react';
 import { useCart } from '@/context/CartContext';
 import { useShopSettings } from '@/context/ShopSettingsContext';
 import { generateEnquiryWhatsAppLink } from '@/lib/whatsapp';
+import AdminLoginModal from '@/components/customer/AdminLoginModal';
 
 export default function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [isAdminModalOpen, setIsAdminModalOpen] = useState(false);
   const { totalItems, setIsDrawerOpen } = useCart();
   const { settings } = useShopSettings();
   const pathname = usePathname();
@@ -30,13 +32,21 @@ export default function Navbar() {
       {/* Top micro announcement bar */}
       <div className="bg-gradient-to-r from-sky-700 via-sky-800 to-emerald-700 text-white text-xs py-1.5 px-4">
         <div className="max-w-7xl mx-auto flex flex-wrap justify-between items-center gap-2">
-          <div className="flex items-center space-x-4">
+          <div className="flex items-center space-x-3 sm:space-x-4">
             <span className="flex items-center gap-1.5 font-medium">
               <Clock className="w-3.5 h-3.5 text-sky-200" />
               {settings.openingHours || 'Daily: 5:00 AM - 10:00 PM'}
             </span>
+            <span className="hidden md:inline text-sky-300">•</span>
+            <Link
+              href="/contact"
+              className="hidden md:flex items-center gap-1 hover:text-sky-200 transition-colors font-medium"
+            >
+              <MapPin className="w-3.5 h-3.5 text-emerald-300" />
+              <span>📍 659J+CX2 Gopuvanipalem, AP 521002</span>
+            </Link>
           </div>
-          <div className="flex items-center space-x-4 font-medium">
+          <div className="flex items-center space-x-3 sm:space-x-4 font-medium">
             <a
               href={`tel:${settings.phone.replace(/\s+/g, '')}`}
               className="flex items-center gap-1 hover:text-sky-200 transition-colors"
@@ -45,9 +55,13 @@ export default function Navbar() {
               <span>Call: {settings.phone}</span>
             </a>
             <span className="hidden sm:inline text-sky-300">•</span>
-            <span className="hidden sm:inline text-sky-100">
-              Bulk orders welcome for Marriages &amp; Functions!
-            </span>
+            <button
+              onClick={() => setIsAdminModalOpen(true)}
+              className="flex items-center gap-1 text-sky-100 hover:text-white transition-colors cursor-pointer bg-sky-900/40 hover:bg-sky-900/70 px-2.5 py-0.5 rounded-full border border-sky-400/30"
+            >
+              <Shield className="w-3 h-3 text-emerald-300" />
+              <span>Admin Login</span>
+            </button>
           </div>
         </div>
       </div>
@@ -96,14 +110,14 @@ export default function Navbar() {
             })}
           </nav>
 
-          {/* Right actions: Cart & WhatsApp */}
-          <div className="flex items-center space-x-3">
+          {/* Right actions: Cart, WhatsApp & Admin Login */}
+          <div className="flex items-center space-x-2.5 sm:space-x-3">
             {/* WhatsApp CTA Button */}
             <a
               href={whatsAppLink}
               target="_blank"
               rel="noopener noreferrer"
-              className="hidden sm:inline-flex items-center gap-2 px-4 py-2.5 rounded-full bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold shadow-sm hover:shadow transition-all active:scale-95"
+              className="hidden lg:inline-flex items-center gap-2 px-4 py-2.5 rounded-full bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold shadow-sm hover:shadow transition-all active:scale-95"
             >
               <MessageCircle className="w-4 h-4 fill-white" />
               <span>WhatsApp Us</span>
@@ -113,7 +127,7 @@ export default function Navbar() {
             <button
               onClick={() => setIsDrawerOpen(true)}
               aria-label="View Shopping Cart"
-              className="relative p-2.5 rounded-xl bg-sky-50 hover:bg-sky-100 text-sky-800 transition-colors flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-sky-500"
+              className="relative p-2.5 rounded-xl bg-sky-50 hover:bg-sky-100 text-sky-800 transition-colors flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-sky-500 cursor-pointer"
             >
               <ShoppingBag className="w-6 h-6" />
               {totalItems > 0 && (
@@ -123,11 +137,22 @@ export default function Navbar() {
               )}
             </button>
 
+            {/* Admin Login Button */}
+            <button
+              onClick={() => setIsAdminModalOpen(true)}
+              aria-label="Shop Owner & Admin Login"
+              title="Admin Login (Staff & Shop Owner)"
+              className="hidden sm:inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-extrabold shadow-sm hover:shadow transition-all active:scale-95 cursor-pointer border border-slate-700/60"
+            >
+              <Shield className="w-3.5 h-3.5 text-sky-400" />
+              <span>Admin</span>
+            </button>
+
             {/* Mobile Hamburger Toggle */}
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
               aria-label="Open mobile menu"
-              className="md:hidden p-2 rounded-lg text-slate-700 hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-sky-500"
+              className="md:hidden p-2 rounded-lg text-slate-700 hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-sky-500 cursor-pointer"
             >
               {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
             </button>
@@ -148,7 +173,7 @@ export default function Navbar() {
               {link.name}
             </Link>
           ))}
-          <div className="pt-3 border-t border-slate-100 flex flex-col gap-2">
+          <div className="pt-3 border-t border-slate-100 flex flex-col gap-2.5">
             <a
               href={whatsAppLink}
               target="_blank"
@@ -158,15 +183,25 @@ export default function Navbar() {
               <MessageCircle className="w-5 h-5 fill-white" />
               Order on WhatsApp
             </a>
-            <Link
-              href="/admin/login"
-              className="text-center text-xs font-medium text-slate-500 hover:text-slate-700 py-1"
+            <button
+              onClick={() => {
+                setMobileMenuOpen(false);
+                setIsAdminModalOpen(true);
+              }}
+              className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-slate-900 text-white font-bold text-sm shadow active:scale-98 cursor-pointer"
             >
-              Shop Owner / Admin Login
-            </Link>
+              <Shield className="w-4 h-4 text-sky-400" />
+              <span>Shop Owner / Admin Login</span>
+            </button>
           </div>
         </div>
       )}
+
+      {/* Admin Login Modal Accessible from Customer Storefront */}
+      <AdminLoginModal
+        isOpen={isAdminModalOpen}
+        onClose={() => setIsAdminModalOpen(false)}
+      />
     </header>
   );
 }

@@ -13,15 +13,15 @@ const siteUrl = process.env.NEXT_PUBLIC_SITE_URL
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
-  title: 'VANI MILK CENTER, GOPIVANIPALEM | Quality Milk Products',
+  title: 'VANI MILK CENTER, GOPUVANIPALEM | Quality Milk Products (659J+CX2)',
   description:
-    'Vani Milk Center, Gopivanipalem - 100% Pure & Natural Quality Milk Products: Full Fat Milk, Curd, Ghee, Paneer, Buttermilk, Lassi. Contact: 7995597719.',
+    'Vani Milk Center (659J+CX2 Vani milk, Gopuvanipalem, Andhra Pradesh 521002) - 100% Pure & Natural Quality Milk Products: Full Fat Milk, Curd, Ghee, Paneer, Buttermilk, Lassi. Contact: 7995597719.',
   keywords:
-    'milk shop, fresh milk, curd bucket, marriage curd order, buttermilk, lassi, daily dairy products, WhatsApp dairy order',
+    'vani milk center, gopuvanipalem, 659J+CX2, milk shop, fresh milk, curd bucket, marriage curd order, buttermilk, lassi, daily dairy products, WhatsApp dairy order',
   openGraph: {
-    title: 'VANI MILK CENTER, GOPIVANIPALEM',
+    title: 'VANI MILK CENTER, GOPUVANIPALEM (659J+CX2)',
     description:
-      'Pure and farm-fresh dairy products. Bulk marriage and function orders welcome. Easy WhatsApp ordering.',
+      'Pure and farm-fresh dairy products in Gopuvanipalem, AP 521002. Bulk marriage and function orders welcome. Easy WhatsApp ordering.',
     images: ['/images/hero-dairy.jpg'],
   },
 };

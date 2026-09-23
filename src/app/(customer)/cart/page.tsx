@@ -18,6 +18,9 @@ import {
   MapPin,
   User,
   FileText,
+  Navigation,
+  ExternalLink,
+  Check,
 } from 'lucide-react';
 import Navbar from '@/components/customer/Navbar';
 import Footer from '@/components/customer/Footer';
@@ -25,6 +28,7 @@ import FloatingWhatsApp from '@/components/customer/FloatingWhatsApp';
 import { useCart } from '@/context/CartContext';
 import { useShopSettings } from '@/context/ShopSettingsContext';
 import { formatINR } from '@/lib/utils';
+import { generateDeliveryRouteUrl } from '@/lib/whatsapp';
 
 export default function CartCheckoutPage() {
   const { items, updateQuantity, removeItem, clearCart, totalAmount, totalItems } = useCart();
@@ -36,6 +40,16 @@ export default function CartCheckoutPage() {
   const [address, setAddress] = useState('');
   const [notes, setNotes] = useState('');
 
+  // GPS Live Location State
+  const [isLocating, setIsLocating] = useState(false);
+  const [gpsLocation, setGpsLocation] = useState<{
+    lat: number;
+    lng: number;
+    accuracy: number;
+    url: string;
+  } | null>(null);
+  const [locationStatus, setLocationStatus] = useState<string | null>(null);
+
   // UI States
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
@@ -44,7 +58,51 @@ export default function CartCheckoutPage() {
     whatsAppLink: string;
     whatsAppMessage: string;
     totalAmount: number;
+    deliveryRouteUrl?: string;
+    liveLocationUrl?: string;
+    address: string;
+    customerName: string;
   } | null>(null);
+
+  // Geolocation detection handler
+  const handleDetectLocation = () => {
+    if (typeof window === 'undefined' || !navigator.geolocation) {
+      setLocationStatus('Geolocation is not supported by your browser.');
+      return;
+    }
+
+    setIsLocating(true);
+    setLocationStatus('Detecting your live GPS coordinates...');
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const lat = position.coords.latitude;
+        const lng = position.coords.longitude;
+        const accuracy = position.coords.accuracy;
+        const mapUrl = `https://maps.google.com/?q=${lat},${lng}`;
+
+        setGpsLocation({ lat, lng, accuracy, url: mapUrl });
+        setIsLocating(false);
+        setLocationStatus(`Live GPS captured (accuracy ±${Math.round(accuracy)}m)`);
+
+        const locationTag = `[📍 GPS: ${lat.toFixed(5)}, ${lng.toFixed(5)}]`;
+        if (!address.trim()) {
+          setAddress(`Live Location: ${locationTag}`);
+        } else if (!address.includes(locationTag)) {
+          setAddress((prev) => `${prev.trim()}\n${locationTag}`);
+        }
+      },
+      (error) => {
+        setIsLocating(false);
+        if (error.code === error.PERMISSION_DENIED) {
+          setLocationStatus('Location permission denied. Please enable GPS permissions or enter your address manually.');
+        } else {
+          setLocationStatus('Unable to retrieve GPS location. Please enter your address manually.');
+        }
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+    );
+  };
 
   const handleSubmitOrder = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -74,7 +132,7 @@ export default function CartCheckoutPage() {
     setIsSubmitting(true);
 
     try {
-      // POST to backend API for server-side verification of prices and stock
+      // POST to backend API for server-side verification of prices, stock, and route generation
       const response = await fetch('/api/orders', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -83,6 +141,9 @@ export default function CartCheckoutPage() {
           customerPhone: cleanPhone,
           address: address.trim(),
           notes: notes.trim() || undefined,
+          latitude: gpsLocation?.lat,
+          longitude: gpsLocation?.lng,
+          liveLocationUrl: gpsLocation?.url,
           items: items.map((i) => ({
             variantId: i.variantId,
             productId: i.productId,
@@ -103,6 +164,10 @@ export default function CartCheckoutPage() {
         whatsAppLink: data.whatsAppLink,
         whatsAppMessage: data.whatsAppMessage,
         totalAmount: data.order.totalAmount,
+        deliveryRouteUrl: data.deliveryRouteUrl || generateDeliveryRouteUrl(address.trim(), gpsLocation?.lat, gpsLocation?.lng),
+        liveLocationUrl: data.liveLocationUrl || gpsLocation?.url,
+        address: address.trim(),
+        customerName: customerName.trim(),
       });
 
       // Clear the local shopping cart
@@ -118,6 +183,15 @@ export default function CartCheckoutPage() {
       setIsSubmitting(false);
     }
   };
+
+  const deliveryDestination =
+    (gpsLocation ? `${gpsLocation.lat},${gpsLocation.lng}` : null) ||
+    completedOrder?.address ||
+    'Gopuvanipalem, Andhra Pradesh';
+
+  const embedRouteUrl = `https://maps.google.com/maps?saddr=659J%2BCX2+Vani+milk,+Gopuvanipalem,+Andhra+Pradesh+521002&daddr=${encodeURIComponent(
+    deliveryDestination
+  )}&output=embed`;
 
   return (
     <div className="min-h-screen flex flex-col bg-transparent">
@@ -145,22 +219,22 @@ export default function CartCheckoutPage() {
               <button
                 type="button"
                 onClick={clearCart}
-                className="text-xs font-semibold text-rose-600 hover:text-rose-700 hover:underline self-start sm:self-auto"
+                className="text-xs font-semibold text-rose-600 hover:text-rose-700 hover:underline self-start sm:self-auto cursor-pointer"
               >
                 Clear entire cart
               </button>
             )}
           </div>
 
-          {/* Success State Screen */}
+          {/* Success State Screen with Live Delivery Route & Order Tracking */}
           {completedOrder ? (
-            <div className="bg-white rounded-3xl border border-emerald-200 shadow-xl p-8 sm:p-12 max-w-2xl mx-auto text-center space-y-6">
-              <div className="w-20 h-20 bg-emerald-100 rounded-full flex items-center justify-center mx-auto text-emerald-600">
-                <CheckCircle2 className="w-12 h-12" />
+            <div className="bg-white rounded-3xl border border-emerald-200 shadow-xl p-6 sm:p-10 max-w-3xl mx-auto text-center space-y-6">
+              <div className="w-16 h-16 sm:w-20 sm:h-20 bg-emerald-100 rounded-full flex items-center justify-center mx-auto text-emerald-600">
+                <CheckCircle2 className="w-10 h-10 sm:w-12 sm:h-12" />
               </div>
 
               <div>
-                <span className="text-xs font-black uppercase tracking-widest text-emerald-700 bg-emerald-50 px-3 py-1 rounded-full">
+                <span className="text-xs font-black uppercase tracking-widest text-emerald-700 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200">
                   Order Successfully Verified &amp; Created
                 </span>
                 <h2 className="text-2xl sm:text-3xl font-black text-slate-900 mt-3">
@@ -171,11 +245,100 @@ export default function CartCheckoutPage() {
                 </p>
               </div>
 
-              <div className="bg-slate-50 rounded-2xl p-5 border border-slate-200 text-left space-y-3">
+              {/* Delivery Boy Navigation & Order Tracking Card */}
+              <div className="bg-slate-50 rounded-2xl p-5 sm:p-6 border border-slate-200 text-left space-y-4">
+                <div className="flex items-center justify-between flex-wrap gap-2 pb-3 border-b border-slate-200">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
+                    <h3 className="font-extrabold text-sm sm:text-base text-slate-900">
+                      🛵 Live Delivery Route from Shop
+                    </h3>
+                  </div>
+                  {completedOrder.deliveryRouteUrl && (
+                    <a
+                      href={completedOrder.deliveryRouteUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-sky-600 hover:bg-sky-700 text-white font-bold text-xs shadow-xs transition-colors"
+                    >
+                      <Navigation className="w-3.5 h-3.5" />
+                      <span>Open Turn-by-Turn Route</span>
+                    </a>
+                  )}
+                </div>
+
+                {/* Origin to Destination badges */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                  <div className="p-3 rounded-xl bg-white border border-slate-200">
+                    <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
+                      Shop Origin (Pickup)
+                    </span>
+                    <p className="font-extrabold text-slate-800">Vani Milk Center</p>
+                    <p className="text-slate-500 text-[11px] mt-0.5">
+                      659J+CX2, Gopuvanipalem, AP 521002
+                    </p>
+                  </div>
+                  <div className="p-3 rounded-xl bg-white border border-slate-200">
+                    <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
+                      Customer Delivery Location
+                    </span>
+                    <p className="font-extrabold text-slate-800">{completedOrder.customerName}</p>
+                    <p className="text-slate-500 text-[11px] mt-0.5 truncate">
+                      {completedOrder.address}
+                    </p>
+                    {completedOrder.liveLocationUrl && (
+                      <a
+                        href={completedOrder.liveLocationUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 text-[11px] text-sky-600 hover:underline font-bold mt-1"
+                      >
+                        <MapPin className="w-3 h-3" />
+                        <span>Live GPS Pin Active</span>
+                      </a>
+                    )}
+                  </div>
+                </div>
+
+                {/* Embedded Interactive Route Map */}
+                <div className="relative w-full h-64 sm:h-72 rounded-2xl overflow-hidden border border-slate-200 shadow-inner bg-slate-100">
+                  <iframe
+                    title="Delivery Route from Vani Milk Center"
+                    src={embedRouteUrl}
+                    width="100%"
+                    height="100%"
+                    className="w-full h-full border-0"
+                    allowFullScreen
+                    loading="lazy"
+                  />
+                </div>
+
+                {/* 4-Step Order Status Timeline */}
+                <div className="pt-2">
+                  <p className="text-xs font-bold text-slate-600 mb-2">Delivery Status Progress:</p>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center text-xs">
+                    <div className="p-2 rounded-xl bg-emerald-100 text-emerald-800 font-bold border border-emerald-200">
+                      ✓ Order Placed
+                    </div>
+                    <div className="p-2 rounded-xl bg-sky-100 text-sky-800 font-bold border border-sky-200">
+                      ● Stock Reserved
+                    </div>
+                    <div className="p-2 rounded-xl bg-slate-100 text-slate-600 font-medium">
+                      3. Out for Delivery
+                    </div>
+                    <div className="p-2 rounded-xl bg-slate-100 text-slate-600 font-medium">
+                      4. Delivered
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Message Preview */}
+              <div className="bg-slate-50 rounded-2xl p-4 sm:p-5 border border-slate-200 text-left space-y-2">
                 <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-                  Generated WhatsApp Message Preview:
+                  Generated WhatsApp Message for Owner:
                 </p>
-                <pre className="text-xs font-mono text-slate-700 whitespace-pre-wrap bg-white p-4 rounded-xl border border-slate-200 overflow-x-auto">
+                <pre className="text-xs font-mono text-slate-700 whitespace-pre-wrap bg-white p-3.5 rounded-xl border border-slate-200 overflow-x-auto max-h-44">
                   {completedOrder.whatsAppMessage}
                 </pre>
               </div>
@@ -236,72 +399,64 @@ export default function CartCheckoutPage() {
                   </span>
                 </div>
 
-                <div className="space-y-4">
+                <div className="divide-y divide-slate-100">
                   {items.map((item) => (
                     <div
                       key={item.variantId}
-                      className="flex gap-4 p-4 rounded-2xl bg-slate-50 border border-slate-200/80 items-center justify-between"
+                      className="py-4 first:pt-0 last:pb-0 flex items-center gap-4"
                     >
-                      {/* Image & details */}
-                      <div className="flex items-center gap-4 min-w-0">
-                        <div className="relative w-16 h-16 rounded-xl overflow-hidden bg-white shrink-0 border border-slate-200">
-                          <Image
-                            src={item.imageUrl || '/images/default-dairy.jpg'}
-                            alt={item.productName}
-                            fill
-                            className="object-cover"
-                          />
-                        </div>
-                        <div className="min-w-0">
-                          <h4 className="font-extrabold text-slate-900 text-sm truncate">
-                            {item.productName}
-                          </h4>
-                          <div className="flex items-center gap-2 mt-1">
-                            <span className="text-xs font-bold px-2 py-0.5 rounded bg-sky-100 text-sky-800">
-                              {item.packSize}
-                            </span>
-                            <span className="text-xs text-slate-500">
-                              {formatINR(item.unitPrice)} each
-                            </span>
-                          </div>
-                        </div>
+                      <div className="relative w-16 h-16 rounded-xl overflow-hidden bg-slate-50 border border-slate-200 shrink-0">
+                        <Image
+                          src={item.imageUrl || '/images/default-dairy.jpg'}
+                          alt={item.productName}
+                          fill
+                          className="object-cover"
+                        />
                       </div>
 
-                      {/* Stepper & Line Total */}
-                      <div className="flex items-center gap-4 shrink-0">
-                        <div className="flex items-center bg-white rounded-xl border border-slate-200 p-0.5">
+                      <div className="flex-1 min-w-0">
+                        <h4 className="font-extrabold text-slate-900 text-sm truncate">
+                          {item.productName}
+                        </h4>
+                        <span className="inline-block text-xs font-semibold px-2 py-0.5 rounded bg-sky-50 text-sky-800 mt-0.5">
+                          {item.packSize}
+                        </span>
+                        <p className="text-xs text-slate-500 mt-1">
+                          {formatINR(item.unitPrice)} each
+                        </p>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <div className="flex items-center border border-slate-200 rounded-xl overflow-hidden bg-white shadow-2xs">
                           <button
                             type="button"
                             onClick={() => updateQuantity(item.variantId, item.quantity - 1)}
-                            className="p-1.5 text-slate-600 hover:text-sky-700 hover:bg-slate-100 rounded-lg"
+                            className="p-1.5 hover:bg-slate-100 text-slate-600 transition-colors"
                             aria-label="Decrease quantity"
                           >
                             <Minus className="w-3.5 h-3.5" />
                           </button>
-                          <span className="w-8 text-center text-sm font-extrabold text-slate-900">
+                          <span className="w-8 text-center text-xs font-bold text-slate-900">
                             {item.quantity}
                           </span>
                           <button
                             type="button"
                             onClick={() => updateQuantity(item.variantId, item.quantity + 1)}
-                            disabled={item.stockQuantity <= item.quantity}
-                            className="p-1.5 text-slate-600 hover:text-sky-700 hover:bg-slate-100 rounded-lg disabled:opacity-40"
+                            className="p-1.5 hover:bg-slate-100 text-slate-600 transition-colors"
                             aria-label="Increase quantity"
                           >
                             <Plus className="w-3.5 h-3.5" />
                           </button>
                         </div>
 
-                        <div className="text-right min-w-[70px]">
-                          <span className="font-black text-slate-900 text-base">
-                            {formatINR(item.unitPrice * item.quantity)}
-                          </span>
-                        </div>
+                        <span className="w-16 text-right font-black text-sm text-slate-900">
+                          {formatINR(item.unitPrice * item.quantity)}
+                        </span>
 
                         <button
                           type="button"
                           onClick={() => removeItem(item.variantId)}
-                          className="p-2 text-slate-400 hover:text-rose-600 transition-colors"
+                          className="p-1.5 text-slate-400 hover:text-rose-600 transition-colors"
                           aria-label="Remove item"
                         >
                           <Trash2 className="w-4 h-4" />
@@ -311,19 +466,19 @@ export default function CartCheckoutPage() {
                   ))}
                 </div>
 
-                {/* Subtotals breakdown */}
-                <div className="pt-6 border-t border-slate-100 space-y-2 text-sm">
-                  <div className="flex justify-between text-slate-600">
-                    <span>Subtotal</span>
-                    <span className="font-bold text-slate-800">{formatINR(totalAmount)}</span>
+                {/* Subtotal & Total display */}
+                <div className="pt-6 border-t border-slate-100 space-y-2">
+                  <div className="flex justify-between items-center text-sm text-slate-600">
+                    <span>Subtotal:</span>
+                    <span className="font-semibold text-slate-900">{formatINR(totalAmount)}</span>
                   </div>
-                  <div className="flex justify-between text-slate-600">
-                    <span>Shop Pickup / Delivery Coordination</span>
-                    <span className="text-emerald-700 font-bold">Confirmed via WhatsApp</span>
+                  <div className="flex justify-between items-center text-sm text-slate-600">
+                    <span>Estimated Delivery / Counter Pickup:</span>
+                    <span className="font-semibold text-emerald-600">Free / Standard Rate</span>
                   </div>
-                  <div className="flex justify-between font-black text-xl text-slate-900 pt-3 border-t border-slate-200">
-                    <span>Order Total</span>
-                    <span className="text-sky-700">{formatINR(totalAmount)}</span>
+                  <div className="flex justify-between items-center text-base sm:text-lg font-black text-slate-900 pt-2 border-t border-dashed border-slate-200">
+                    <span>Estimated Total:</span>
+                    <span className="text-xl sm:text-2xl text-sky-700">{formatINR(totalAmount)}</span>
                   </div>
                 </div>
 
@@ -345,7 +500,7 @@ export default function CartCheckoutPage() {
                     Customer Information
                   </h2>
                   <p className="text-xs text-slate-500 mt-1">
-                    Enter your details to generate your pre-filled WhatsApp order message.
+                    Enter your details to generate your pre-filled WhatsApp order message and delivery route.
                   </p>
                 </div>
 
@@ -394,19 +549,57 @@ export default function CartCheckoutPage() {
                     </div>
                   </div>
 
-                  {/* Delivery / Address */}
+                  {/* Delivery / Address with Live GPS Detection */}
                   <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-wider">
-                      Delivery Address or Shop Pickup <span className="text-rose-500">*</span>
-                    </label>
+                    <div className="flex items-center justify-between mb-1.5 flex-wrap gap-2">
+                      <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">
+                        Delivery Address or Shop Pickup <span className="text-rose-500">*</span>
+                      </label>
+                      <button
+                        type="button"
+                        onClick={handleDetectLocation}
+                        disabled={isLocating}
+                        className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-sky-50 hover:bg-sky-100 text-sky-700 font-bold text-xs border border-sky-200 transition-all cursor-pointer active:scale-95 disabled:opacity-50"
+                      >
+                        {isLocating ? (
+                          <>
+                            <Loader2 className="w-3.5 h-3.5 animate-spin text-sky-600" />
+                            <span>Detecting GPS...</span>
+                          </>
+                        ) : (
+                          <>
+                            <Navigation className="w-3.5 h-3.5 text-sky-600" />
+                            <span>📍 Use My Live GPS Location</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+
+                    {locationStatus && (
+                      <div className="mb-2 p-2.5 rounded-xl bg-sky-50 border border-sky-100 text-xs flex items-center justify-between gap-2">
+                        <span className="text-sky-800 font-medium">{locationStatus}</span>
+                        {gpsLocation && (
+                          <a
+                            href={gpsLocation.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1 text-[11px] font-bold text-sky-700 hover:underline"
+                          >
+                            <span>View Map Pin</span>
+                            <ExternalLink className="w-3 h-3" />
+                          </a>
+                        )}
+                      </div>
+                    )}
+
                     <div className="relative">
                       <MapPin className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5 pointer-events-none" />
                       <textarea
                         required
-                        rows={2}
+                        rows={3}
                         value={address}
                         onChange={(e) => setAddress(e.target.value)}
-                        placeholder="e.g. House #12, Market Street, Tuni (or 'Shop Pickup')"
+                        placeholder="e.g. House #12, Market Street, Gopuvanipalem (or click 'Use My Live GPS Location')"
                         className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-sm font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:bg-white transition-all resize-none"
                       />
                     </div>
@@ -439,18 +632,15 @@ export default function CartCheckoutPage() {
                       {isSubmitting ? (
                         <>
                           <Loader2 className="w-5 h-5 animate-spin" />
-                          <span>Verifying &amp; Generating Order...</span>
+                          <span>Calculating Route &amp; Generating Order...</span>
                         </>
                       ) : (
                         <>
                           <MessageCircle className="w-5 h-5 fill-white" />
-                          <span>Submit Order on WhatsApp</span>
+                          <span>Generate Order &amp; WhatsApp Route</span>
                         </>
                       )}
                     </button>
-                    <p className="text-center text-[11px] text-slate-500 mt-2">
-                      WhatsApp will automatically open with your complete order breakdown pre-typed.
-                    </p>
                   </div>
                 </form>
               </div>

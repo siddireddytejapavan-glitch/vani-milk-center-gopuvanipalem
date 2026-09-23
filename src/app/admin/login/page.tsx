@@ -59,7 +59,7 @@ export default function AdminLoginPage() {
           Shop Owner &amp; Admin Login
         </h2>
         <p className="mt-1 text-xs text-slate-400">
-          Secure dashboard access for VANI MILK CENTER, GOPIVANIPALEM
+          Secure dashboard access for VANI MILK CENTER, GOPUVANIPALEM (659J+CX2)
         </p>
       </div>
 

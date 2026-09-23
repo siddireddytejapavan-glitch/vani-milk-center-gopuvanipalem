@@ -114,7 +114,7 @@ export default function Hero() {
                         VANI MILK CENTER
                       </p>
                       <p className="text-xs text-slate-200">
-                        Gopivanipalem • WhatsApp / Call: 7995597719
+                        659J+CX2 Gopuvanipalem • WhatsApp / Call: 7995597719
                       </p>
                     </div>
                     <span className="bg-white/20 backdrop-blur-md text-white text-[11px] font-black px-2.5 py-1 rounded-full uppercase tracking-wider border border-white/30">

@@ -45,15 +45,16 @@ export interface ShopSettingsData {
 
 export const DEFAULT_SHOP_SETTINGS: ShopSettingsData = {
   id: 'default-settings',
-  shopName: 'VANI MILK CENTER, GOPIVANIPALEM',
+  shopName: 'VANI MILK CENTER, GOPUVANIPALEM',
   phone: '7995597719',
   whatsappNumber: '917995597719',
-  address: 'Gopivanipalem, Andhra Pradesh',
+  address: '659J+CX2 Vani milk, Gopuvanipalem, Andhra Pradesh 521002',
   openingHours: 'Morning 5:00 AM - Evening 10:00 PM',
-  googleMapsUrl: 'https://maps.google.com/?q=Gopivanipalem',
+  googleMapsUrl:
+    'https://www.google.com/maps/search/?api=1&query=659J%2BCX2+Vani+milk%2C+Gopuvanipalem%2C+Andhra+Pradesh+521002',
   logoUrl: '/images/shop-logo.svg',
   aboutDescription:
-    'Welcome to Vani Milk Center, Gopivanipalem. We provide 100% pure & natural, hygienically processed milk, curd, ghee, paneer, buttermilk, and lassi for daily families, functions, and bulk catering orders.',
+    'Welcome to Vani Milk Center, Gopuvanipalem (659J+CX2). We provide 100% pure & natural, hygienically processed milk, curd, ghee, paneer, buttermilk, and lassi for daily families, functions, and bulk catering orders.',
   bannerText:
     '100% Pure & Natural Milk Products | Healthy Life Happy Life | Home Delivery: 7995597719',
 };
