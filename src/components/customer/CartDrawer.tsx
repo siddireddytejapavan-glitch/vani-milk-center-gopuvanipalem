@@ -5,6 +5,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { X, Trash2, Plus, Minus, ShoppingBag, ArrowRight } from 'lucide-react';
 import { useCart } from '@/context/CartContext';
+import { useLanguage } from '@/context/LanguageContext';
 import { formatINR } from '@/lib/utils';
 
 export default function CartDrawer() {
@@ -17,6 +18,7 @@ export default function CartDrawer() {
     totalAmount,
     totalItems,
   } = useCart();
+  const { t } = useLanguage();
 
   if (!isDrawerOpen) return null;
 
@@ -34,14 +36,16 @@ export default function CartDrawer() {
           <div className="p-5 border-b border-slate-200 flex items-center justify-between bg-slate-50">
             <div className="flex items-center gap-2.5">
               <ShoppingBag className="w-5 h-5 text-sky-600" />
-              <h2 className="font-bold text-slate-800 text-lg">Your Cart</h2>
+              <h2 className="font-bold text-slate-800 text-lg">
+                {t('cart.title', 'Your Cart')}
+              </h2>
               <span className="text-xs bg-sky-100 text-sky-800 font-bold px-2 py-0.5 rounded-full">
                 {totalItems} {totalItems === 1 ? 'item' : 'items'}
               </span>
             </div>
             <button
               onClick={() => setIsDrawerOpen(false)}
-              className="p-2 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-200/60 transition-colors"
+              className="p-2 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-200/60 transition-colors cursor-pointer"
               aria-label="Close cart"
             >
               <X className="w-5 h-5" />
@@ -55,15 +59,20 @@ export default function CartDrawer() {
                 <div className="w-20 h-20 bg-sky-50 rounded-full flex items-center justify-center mx-auto mb-4 text-sky-500">
                   <ShoppingBag className="w-10 h-10 stroke-[1.5]" />
                 </div>
-                <h3 className="font-bold text-slate-800 text-lg">Your cart is empty</h3>
+                <h3 className="font-bold text-slate-800 text-lg">
+                  {t('cart.empty', 'Your cart is empty')}
+                </h3>
                 <p className="text-slate-500 text-sm mt-1 mb-6 max-w-xs mx-auto">
-                  Add fresh milk, thick curd buckets, or buttermilk to get started.
+                  {t(
+                    'cart.emptyDesc',
+                    'Add fresh milk, thick curd buckets, or buttermilk to get started.'
+                  )}
                 </p>
                 <button
                   onClick={() => setIsDrawerOpen(false)}
-                  className="px-6 py-2.5 bg-sky-600 hover:bg-sky-700 text-white font-bold rounded-xl text-sm transition-colors"
+                  className="px-6 py-2.5 bg-sky-600 hover:bg-sky-700 text-white font-bold rounded-xl text-sm transition-colors cursor-pointer"
                 >
-                  Browse Dairy Products
+                  {t('products.all', 'Browse Dairy Products')}
                 </button>
               </div>
             ) : (
@@ -95,7 +104,7 @@ export default function CartDrawer() {
                       </div>
                       <button
                         onClick={() => removeItem(item.variantId)}
-                        className="text-slate-400 hover:text-rose-600 p-1 transition-colors"
+                        className="text-slate-400 hover:text-rose-600 p-1 transition-colors cursor-pointer"
                         aria-label="Remove item"
                       >
                         <Trash2 className="w-4 h-4" />
@@ -105,14 +114,14 @@ export default function CartDrawer() {
                     <div className="flex items-center justify-between mt-2 pt-1 border-t border-slate-200/60">
                       {/* Price per unit */}
                       <span className="text-xs text-slate-500">
-                        {formatINR(item.unitPrice)} each
+                        {formatINR(item.unitPrice)}
                       </span>
 
                       {/* Stepper */}
                       <div className="flex items-center space-x-2 bg-white rounded-lg border border-slate-200 px-1 py-0.5">
                         <button
                           onClick={() => updateQuantity(item.variantId, item.quantity - 1)}
-                          className="p-1 text-slate-600 hover:text-sky-700 hover:bg-slate-100 rounded"
+                          className="p-1 text-slate-600 hover:text-sky-700 hover:bg-slate-100 rounded cursor-pointer"
                           aria-label="Decrease quantity"
                         >
                           <Minus className="w-3.5 h-3.5" />
@@ -123,7 +132,7 @@ export default function CartDrawer() {
                         <button
                           onClick={() => updateQuantity(item.variantId, item.quantity + 1)}
                           disabled={item.stockQuantity <= item.quantity}
-                          className="p-1 text-slate-600 hover:text-sky-700 hover:bg-slate-100 rounded disabled:opacity-40"
+                          className="p-1 text-slate-600 hover:text-sky-700 hover:bg-slate-100 rounded disabled:opacity-40 cursor-pointer"
                           aria-label="Increase quantity"
                         >
                           <Plus className="w-3.5 h-3.5" />
@@ -146,15 +155,15 @@ export default function CartDrawer() {
             <div className="p-5 bg-slate-50 border-t border-slate-200 space-y-4">
               <div className="space-y-1.5 text-sm">
                 <div className="flex justify-between text-slate-600">
-                  <span>Subtotal ({totalItems} items)</span>
+                  <span>{t('cart.subtotal', 'Subtotal')} ({totalItems} items)</span>
                   <span>{formatINR(totalAmount)}</span>
                 </div>
                 <div className="flex justify-between text-slate-600">
-                  <span>Delivery / Pickup</span>
-                  <span className="text-emerald-700 font-semibold">Free Shop Pickup</span>
+                  <span>{t('cart.delivery', 'Delivery / Pickup')}</span>
+                  <span className="text-emerald-700 font-semibold">{t('cart.free', 'Free Shop Pickup')}</span>
                 </div>
                 <div className="flex justify-between font-extrabold text-slate-900 text-lg pt-2 border-t border-slate-200">
-                  <span>Order Total</span>
+                  <span>{t('cart.total', 'Order Total')}</span>
                   <span className="text-sky-700">{formatINR(totalAmount)}</span>
                 </div>
               </div>
@@ -165,14 +174,14 @@ export default function CartDrawer() {
                   onClick={() => setIsDrawerOpen(false)}
                   className="w-full flex items-center justify-center gap-2 py-3.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-base shadow hover:shadow-md transition-all active:scale-98"
                 >
-                  <span>Proceed to WhatsApp Checkout</span>
+                  <span>{t('cart.checkoutBtn', 'Proceed to Checkout')}</span>
                   <ArrowRight className="w-4 h-4" />
                 </Link>
                 <button
                   onClick={() => setIsDrawerOpen(false)}
-                  className="w-full py-2.5 text-xs font-semibold text-slate-600 hover:text-slate-900 transition-colors text-center"
+                  className="w-full py-2.5 text-xs font-semibold text-slate-600 hover:text-slate-900 transition-colors text-center cursor-pointer"
                 >
-                  Continue Shopping
+                  {t('cart.continue', 'Continue Shopping')}
                 </button>
               </div>
             </div>

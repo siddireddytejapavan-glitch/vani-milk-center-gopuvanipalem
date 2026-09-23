@@ -5,10 +5,12 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { ShoppingBag, MessageCircle, Sparkles, CheckCircle2 } from 'lucide-react';
 import { useShopSettings } from '@/context/ShopSettingsContext';
+import { useLanguage } from '@/context/LanguageContext';
 import { generateEnquiryWhatsAppLink } from '@/lib/whatsapp';
 
 export default function Hero() {
   const { settings } = useShopSettings();
+  const { t } = useLanguage();
   const whatsAppLink = generateEnquiryWhatsAppLink(settings.whatsappNumber);
 
   return (
@@ -21,37 +23,40 @@ export default function Hero() {
             <div className="inline-flex flex-wrap items-center justify-center lg:justify-start gap-2">
               <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-sky-100/90 text-sky-800 text-xs font-extrabold tracking-wide uppercase border border-sky-200/60 shadow-xs">
                 <Sparkles className="w-3.5 h-3.5 text-sky-600" />
-                <span>100% Pure &amp; Farm Fresh Dairy</span>
+                <span>{t('hero.badge', '100% Pure & Farm Fresh Dairy')}</span>
               </div>
               <div className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-emerald-100/90 text-emerald-800 text-xs font-black tracking-wide border border-emerald-200/60 shadow-xs">
-                <span>⏰ Open: 5:00 AM – 10:00 PM</span>
+                <span>{t('hero.openBadge', '⏰ Open: 5:00 AM – 10:00 PM')}</span>
               </div>
             </div>
 
             <h1 className="text-3xl sm:text-5xl lg:text-6xl font-black text-slate-900 tracking-tight leading-[1.15]">
-              Fresh Milk &amp; Dairy Products for{' '}
+              {t('hero.title1', 'Fresh Milk & Dairy Products for ')}
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-sky-600 to-emerald-600">
-                Your Family &amp; Functions
+                {t('hero.titleHighlight', 'Your Family & Functions')}
               </span>
             </h1>
 
             <p className="text-base sm:text-lg text-slate-600 max-w-2xl mx-auto lg:mx-0 leading-relaxed">
-              Fresh, quality dairy products available for daily needs, family functions, marriages and special events. Directly from our local family shop to your home.
+              {t(
+                'hero.desc',
+                'Fresh, quality dairy products available for daily needs, family functions, marriages and special events. Directly from our local family shop to your home.'
+              )}
             </p>
 
             {/* Bullets */}
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 pt-2 max-w-xl mx-auto lg:mx-0 text-left">
               <div className="flex items-center gap-2 text-xs sm:text-sm font-semibold text-slate-700">
                 <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                <span>Daily Fresh Milk</span>
+                <span>{t('hero.bullet1', 'Daily Fresh Milk')}</span>
               </div>
               <div className="flex items-center gap-2 text-xs sm:text-sm font-semibold text-slate-700">
                 <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                <span>Thick Set Curd</span>
+                <span>{t('hero.bullet2', 'Thick Set Curd')}</span>
               </div>
               <div className="flex items-center gap-2 text-xs sm:text-sm font-semibold text-slate-700">
                 <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                <span>Bulk Function Buckets</span>
+                <span>{t('hero.bullet3', 'Bulk Function Buckets')}</span>
               </div>
             </div>
 
@@ -62,7 +67,7 @@ export default function Hero() {
                 className="w-full sm:w-auto flex items-center justify-center gap-2.5 px-8 py-4 rounded-2xl bg-sky-600 hover:bg-sky-700 text-white font-extrabold text-base shadow-lg shadow-sky-600/20 hover:shadow-xl transition-all active:scale-95"
               >
                 <ShoppingBag className="w-5 h-5" />
-                <span>Shop Products</span>
+                <span>{t('hero.shopBtn', 'Shop Products')}</span>
               </Link>
 
               <a
@@ -72,7 +77,7 @@ export default function Hero() {
                 className="w-full sm:w-auto flex items-center justify-center gap-2.5 px-8 py-4 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-base shadow-lg shadow-emerald-600/20 hover:shadow-xl transition-all active:scale-95"
               >
                 <MessageCircle className="w-5 h-5 fill-white" />
-                <span>Order on WhatsApp</span>
+                <span>{t('hero.whatsappBtn', 'Order on WhatsApp')}</span>
               </a>
             </div>
 
@@ -99,7 +104,7 @@ export default function Hero() {
                 {/* Top Badge */}
                 <div className="absolute top-4 left-4 right-4 flex items-center justify-between pointer-events-none">
                   <span className="bg-sky-600/90 backdrop-blur-md text-white text-[11px] font-black px-3 py-1 rounded-full uppercase tracking-wider shadow-sm">
-                    📍 Our Actual Shop
+                    {t('hero.actualShop', '📍 Our Actual Shop')}
                   </span>
                   <span className="bg-emerald-600/90 backdrop-blur-md text-white text-[11px] font-black px-3 py-1 rounded-full uppercase tracking-wider shadow-sm">
                     Open 5 AM - 10 PM
@@ -118,7 +123,7 @@ export default function Hero() {
                       </p>
                     </div>
                     <span className="bg-white/20 backdrop-blur-md text-white text-[11px] font-black px-2.5 py-1 rounded-full uppercase tracking-wider border border-white/30">
-                      100% Pure
+                      {t('hero.pureBadge', '100% Pure')}
                     </span>
                   </div>
                 </div>
@@ -130,7 +135,7 @@ export default function Hero() {
                   10kg
                 </div>
                 <div>
-                  <p className="text-xs font-bold text-slate-900">Curd Buckets for Functions</p>
+                  <p className="text-xs font-bold text-slate-900">{t('hero.bucketNote', 'Curd Buckets for Functions')}</p>
                   <p className="text-[11px] text-slate-500">5kg, 10kg &amp; 20kg available</p>
                 </div>
               </div>

@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import Link from 'next/link';
 import {
   Search,
   MessageCircle,
@@ -200,6 +201,11 @@ export default function OrderManager({
             const routeUrl = generateDeliveryRouteUrl(order.address);
 
             // Dispatch text for delivery boy
+            const deliveryPortalUrl =
+              typeof window !== 'undefined'
+                ? `${window.location.origin}/delivery/${order.id}`
+                : `/delivery/${order.id}`;
+
             const deliveryBoyDispatchMsg = generateDeliveryBoyDispatchMessage({
               orderId: order.id,
               customerName: order.customerName,
@@ -208,6 +214,7 @@ export default function OrderManager({
               totalAmount: order.totalAmount,
               items: order.items,
               deliveryRouteUrl: routeUrl,
+              deliveryPortalUrl,
               notes: order.notes,
             });
             const deliveryBoyWhatsAppLink = `https://wa.me/?text=${encodeURIComponent(

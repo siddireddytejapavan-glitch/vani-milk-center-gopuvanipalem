@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import './globals.css';
 import { CartProvider } from '@/context/CartContext';
 import { ShopSettingsProvider } from '@/context/ShopSettingsContext';
+import { LanguageProvider } from '@/context/LanguageContext';
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL
   ? (process.env.NEXT_PUBLIC_SITE_URL.startsWith('http')
@@ -47,9 +48,11 @@ export default function RootLayout({
         />
 
         <ShopSettingsProvider>
-          <CartProvider>
-            {children}
-          </CartProvider>
+          <LanguageProvider>
+            <CartProvider>
+              {children}
+            </CartProvider>
+          </LanguageProvider>
         </ShopSettingsProvider>
       </body>
     </html>

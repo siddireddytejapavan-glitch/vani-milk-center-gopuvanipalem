@@ -5,10 +5,12 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { MessageCircle, ShoppingBag, Sparkles, Check } from 'lucide-react';
 import { useShopSettings } from '@/context/ShopSettingsContext';
+import { useLanguage } from '@/context/LanguageContext';
 import { generateWhatsAppLink } from '@/lib/whatsapp';
 
 export default function BulkOrderBanner() {
   const { settings } = useShopSettings();
+  const { t } = useLanguage();
 
   const functionWhatsAppMsg = `Hello, I would like to inquire about bulk dairy products (Curd Buckets / Milk) for an upcoming marriage / family function.`;
   const functionWhatsAppLink = generateWhatsAppLink(
@@ -53,11 +55,14 @@ export default function BulkOrderBanner() {
             </div>
 
             <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight leading-tight">
-              Planning a Marriage or Special Function?
+              {t('bulk.title', 'Planning a Marriage or Special Function?')}
             </h2>
 
             <p className="text-base text-slate-300 leading-relaxed">
-              We provide large quantities of dairy products for marriages, family functions, birthday parties, religious poojas, hotels, and catering events.
+              {t(
+                'bulk.desc',
+                'We provide large quantities of dairy products for marriages, family functions, birthday parties, religious poojas, hotels, and catering events.'
+              )}
             </p>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
@@ -93,7 +98,7 @@ export default function BulkOrderBanner() {
                 className="w-full sm:w-auto flex items-center justify-center gap-2 px-7 py-3.5 rounded-xl bg-sky-500 hover:bg-sky-400 text-slate-950 font-black text-sm shadow-lg transition-all active:scale-95"
               >
                 <ShoppingBag className="w-4 h-4" />
-                <span>Order Curd Buckets Now</span>
+                <span>{t('bulk.orderNow', 'Order Curd Buckets Now')}</span>
               </Link>
 
               <a

@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import Image from 'next/image';
 import { Plus, Minus, ShoppingCart, Check, AlertCircle } from 'lucide-react';
 import { useCart } from '@/context/CartContext';
+import { useLanguage } from '@/context/LanguageContext';
 import { formatINR } from '@/lib/utils';
 
 export interface VariantType {
@@ -31,6 +32,7 @@ export interface ProductType {
 
 export default function ProductCard({ product }: { product: ProductType }) {
   const { addItem } = useCart();
+  const { t } = useLanguage();
   const [selectedVariantIndex, setSelectedVariantIndex] = useState(0);
   const [quantity, setQuantity] = useState(1);
   const [addedAnimation, setAddedAnimation] = useState(false);
@@ -116,7 +118,7 @@ export default function ProductCard({ product }: { product: ProductType }) {
         {isOutOfStock && (
           <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
             <span className="bg-rose-600 text-white font-bold px-4 py-1.5 rounded-full text-xs uppercase tracking-wider shadow">
-              Currently Unavailable / Out of Stock
+              {t('products.outOfStock', 'Currently Unavailable / Out of Stock')}
             </span>
           </div>
         )}
@@ -135,7 +137,7 @@ export default function ProductCard({ product }: { product: ProductType }) {
           {/* Variant Selector */}
           <div className="mt-4">
             <label className="block text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-wider">
-              Select Pack Size:
+              {t('products.packSize', 'Select Pack Size:')}
             </label>
             <div className="flex flex-wrap gap-1.5">
               {product.variants.map((variant, idx) => {
@@ -179,7 +181,7 @@ export default function ProductCard({ product }: { product: ProductType }) {
             <div className="text-right">
               {currentVariant && !isOutOfStock && (
                 <span className="text-xs font-medium text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">
-                  In Stock ({currentVariant.stockQuantity})
+                  {t('products.inStock', 'In Stock')} ({currentVariant.stockQuantity})
                 </span>
               )}
             </div>
@@ -194,7 +196,7 @@ export default function ProductCard({ product }: { product: ProductType }) {
                 onClick={handleDecrement}
                 disabled={quantity <= 1 || isOutOfStock}
                 aria-label="Decrease quantity"
-                className="w-8 h-8 rounded-xl bg-white text-slate-700 font-bold flex items-center justify-center hover:bg-slate-50 active:scale-95 disabled:opacity-40 shadow-xs"
+                className="w-8 h-8 rounded-xl bg-white text-slate-700 font-bold flex items-center justify-center hover:bg-slate-50 active:scale-95 disabled:opacity-40 shadow-xs cursor-pointer"
               >
                 <Minus className="w-4 h-4" />
               </button>
@@ -206,7 +208,7 @@ export default function ProductCard({ product }: { product: ProductType }) {
                 onClick={handleIncrement}
                 disabled={isOutOfStock || (currentVariant && quantity >= currentVariant.stockQuantity)}
                 aria-label="Increase quantity"
-                className="w-8 h-8 rounded-xl bg-white text-slate-700 font-bold flex items-center justify-center hover:bg-slate-50 active:scale-95 disabled:opacity-40 shadow-xs"
+                className="w-8 h-8 rounded-xl bg-white text-slate-700 font-bold flex items-center justify-center hover:bg-slate-50 active:scale-95 disabled:opacity-40 shadow-xs cursor-pointer"
               >
                 <Plus className="w-4 h-4" />
               </button>
@@ -217,7 +219,7 @@ export default function ProductCard({ product }: { product: ProductType }) {
               type="button"
               onClick={handleAddToCart}
               disabled={isOutOfStock}
-              className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-2xl font-bold text-sm shadow-md transition-all active:scale-95 ${
+              className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-2xl font-bold text-sm shadow-md transition-all active:scale-95 cursor-pointer ${
                 addedAnimation
                   ? 'bg-emerald-600 text-white'
                   : isOutOfStock
@@ -228,17 +230,17 @@ export default function ProductCard({ product }: { product: ProductType }) {
               {addedAnimation ? (
                 <>
                   <Check className="w-4 h-4 animate-bounce" />
-                  <span>Added to Cart!</span>
+                  <span>{t('products.added', 'Added to Cart!')}</span>
                 </>
               ) : isOutOfStock ? (
                 <>
                   <AlertCircle className="w-4 h-4" />
-                  <span>Out of Stock</span>
+                  <span>{t('products.outOfStock', 'Out of Stock')}</span>
                 </>
               ) : (
                 <>
                   <ShoppingCart className="w-4 h-4" />
-                  <span>Add to Cart</span>
+                  <span>{t('products.addToCart', 'Add to Cart')}</span>
                 </>
               )}
             </button>

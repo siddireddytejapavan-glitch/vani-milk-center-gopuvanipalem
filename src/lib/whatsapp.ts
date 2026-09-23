@@ -68,6 +68,7 @@ export function generateDeliveryBoyDispatchMessage(details: {
   deliveryRouteUrl: string;
   liveLocationUrl?: string | null;
   notes?: string | null;
+  deliveryPortalUrl?: string;
 }): string {
   let msg = `🛵 *DELIVERY DISPATCH — VANI MILK CENTER*\n`;
   msg += `Order Ref: #${details.orderId.slice(-6).toUpperCase()}\n`;
@@ -93,7 +94,40 @@ export function generateDeliveryBoyDispatchMessage(details: {
     msg += `📝 *Notes:* ${details.notes.trim()}\n`;
   }
 
+  if (details.deliveryPortalUrl) {
+    msg += `\n✅ *Confirm Delivery in Platform:*\n${details.deliveryPortalUrl}\n`;
+  }
+
   msg += `\n*Start delivery navigation from Vani Milk Center, Gopuvanipalem!*`;
+  return msg;
+}
+
+export function generateDeliveryCompletionMessage(details: {
+  orderId: string;
+  customerName: string;
+  customerPhone: string;
+  address: string;
+  totalAmount: number;
+  deliveredAt?: string;
+  deliveryNotes?: string;
+  deliveryPersonName?: string;
+}): string {
+  let msg = `✅ *ORDER DELIVERED — VANI MILK CENTER*\n`;
+  msg += `---------------------------------\n`;
+  msg += `Order Ref: #${details.orderId.slice(-6).toUpperCase()}\n`;
+  msg += `👤 *Customer:* ${details.customerName}\n`;
+  msg += `📞 *Phone:* ${details.customerPhone}\n`;
+  msg += `🏠 *Address:* ${details.address}\n`;
+  msg += `💰 *Amount Collected:* ${formatCurrencyINR(details.totalAmount)}\n`;
+  msg += `📦 *Status:* Delivered Successfully 🎉\n`;
+  msg += `⏰ *Delivered At:* ${details.deliveredAt || new Date().toLocaleString('en-IN')}\n`;
+  if (details.deliveryPersonName) {
+    msg += `🛵 *Delivered By:* ${details.deliveryPersonName}\n`;
+  }
+  if (details.deliveryNotes && details.deliveryNotes.trim()) {
+    msg += `📝 *Delivery Note:* ${details.deliveryNotes.trim()}\n`;
+  }
+  msg += `\n*Order status updated to Delivered in platform.*`;
   return msg;
 }
 

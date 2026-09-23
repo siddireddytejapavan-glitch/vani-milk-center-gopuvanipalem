@@ -3,10 +3,12 @@
 import React, { useState } from 'react';
 import { Phone, MessageCircle, MapPin, Clock, Navigation, ExternalLink, Copy, Check } from 'lucide-react';
 import { useShopSettings } from '@/context/ShopSettingsContext';
+import { useLanguage } from '@/context/LanguageContext';
 import { generateEnquiryWhatsAppLink } from '@/lib/whatsapp';
 
 export default function ContactSection() {
   const { settings } = useShopSettings();
+  const { t } = useLanguage();
   const [copiedPlusCode, setCopiedPlusCode] = useState(false);
   const whatsAppLink = generateEnquiryWhatsAppLink(settings.whatsappNumber);
 
@@ -26,13 +28,16 @@ export default function ContactSection() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center max-w-2xl mx-auto mb-14 space-y-2">
           <span className="text-xs font-black uppercase tracking-widest text-sky-600 bg-sky-50 px-3 py-1 rounded-full border border-sky-100">
-            Visit &amp; Contact Us
+            {t('contact.title', 'Visit & Contact Us')}
           </span>
           <h2 className="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight">
-            Our Shop Live Location &amp; Timings
+            {t('contact.liveLocation', 'Our Shop Live Location & Timings')}
           </h2>
           <p className="text-slate-600 text-sm">
-            Visit our counter directly in Gopuvanipalem or contact us for home pickup and marriage function orders.
+            {t(
+              'contact.subtitle',
+              'Visit our counter directly in Gopuvanipalem or contact us for home pickup and marriage function orders.'
+            )}
           </p>
         </div>
 
@@ -47,7 +52,9 @@ export default function ContactSection() {
                 </div>
                 <div className="space-y-1">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <h4 className="font-extrabold text-slate-900 text-base">Shop Live Address</h4>
+                    <h4 className="font-extrabold text-slate-900 text-base">
+                      {t('contact.liveLocation', 'Shop Live Address')}
+                    </h4>
                     <span className="text-[11px] font-mono font-bold bg-sky-100 text-sky-800 px-2 py-0.5 rounded border border-sky-200">
                       {plusCode}
                     </span>
@@ -65,12 +72,12 @@ export default function ContactSection() {
                     {copiedPlusCode ? (
                       <>
                         <Check className="w-3.5 h-3.5 text-emerald-600" />
-                        <span className="text-emerald-700 font-bold">Plus Code Copied!</span>
+                        <span className="text-emerald-700 font-bold">{t('contact.copied', 'Plus Code Copied!')}</span>
                       </>
                     ) : (
                       <>
                         <Copy className="w-3.5 h-3.5" />
-                        <span>Copy Plus Code ({plusCode})</span>
+                        <span>{t('contact.copyCode', 'Copy Plus Code')} ({plusCode})</span>
                       </>
                     )}
                   </button>
@@ -83,12 +90,14 @@ export default function ContactSection() {
                   <Clock className="w-6 h-6" />
                 </div>
                 <div>
-                  <h4 className="font-extrabold text-slate-900 text-base">Opening Timings</h4>
+                  <h4 className="font-extrabold text-slate-900 text-base">
+                    {t('contact.timings', 'Opening Timings')}
+                  </h4>
                   <p className="text-sm text-slate-600 mt-1 leading-relaxed">
                     {settings.openingHours || 'Daily: 5:00 AM - 10:00 PM'}
                   </p>
                   <span className="inline-block text-xs font-bold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-md mt-1.5 border border-emerald-200">
-                    Open All 7 Days (5:00 AM – 10:00 PM)
+                    {t('nav.openHours', 'Open Daily: 5:00 AM – 10:00 PM')}
                   </span>
                 </div>
               </div>
@@ -99,7 +108,9 @@ export default function ContactSection() {
                   <Phone className="w-6 h-6" />
                 </div>
                 <div>
-                  <h4 className="font-extrabold text-slate-900 text-base">Direct Phone &amp; WhatsApp</h4>
+                  <h4 className="font-extrabold text-slate-900 text-base">
+                    {t('contact.ownerContact', 'Direct Phone & WhatsApp')}
+                  </h4>
                   <p className="text-sm text-slate-700 mt-1 font-semibold">
                     Phone: <a href={`tel:${settings.phone.replace(/\s+/g, '')}`} className="hover:text-sky-600">{settings.phone}</a>
                   </p>
@@ -137,7 +148,7 @@ export default function ContactSection() {
                 className="flex items-center justify-center gap-2 py-3 px-3 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs shadow-xs transition-colors active:scale-95"
               >
                 <Navigation className="w-4 h-4 text-sky-400" />
-                <span>Directions</span>
+                <span>{t('contact.openMaps', 'Directions')}</span>
               </a>
             </div>
           </div>
@@ -148,7 +159,7 @@ export default function ContactSection() {
               <div className="flex items-center gap-2">
                 <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
                 <span className="text-xs font-black uppercase tracking-wider text-slate-800">
-                  Live Shop Map Pin
+                  {t('contact.liveLocation', 'Live Shop Map Pin')}
                 </span>
                 <span className="text-[11px] text-slate-500">
                   • Gopuvanipalem, AP 521002
@@ -161,7 +172,7 @@ export default function ContactSection() {
                   rel="noopener noreferrer"
                   className="inline-flex items-center gap-1 text-xs font-bold text-sky-600 hover:text-sky-700"
                 >
-                  <span>Open Full Map</span>
+                  <span>{t('contact.openMaps', 'Open Full Map')}</span>
                   <ExternalLink className="w-3.5 h-3.5" />
                 </a>
               </div>
@@ -199,7 +210,7 @@ export default function ContactSection() {
                 className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-sky-600 hover:bg-sky-700 text-white font-extrabold text-xs shadow hover:shadow-md transition-all active:scale-95"
               >
                 <Navigation className="w-3.5 h-3.5" />
-                <span>Get Driving Directions</span>
+                <span>{t('contact.openMaps', 'Get Driving Directions')}</span>
               </a>
             </div>
           </div>

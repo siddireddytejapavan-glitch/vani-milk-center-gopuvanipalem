@@ -27,12 +27,14 @@ import Footer from '@/components/customer/Footer';
 import FloatingWhatsApp from '@/components/customer/FloatingWhatsApp';
 import { useCart } from '@/context/CartContext';
 import { useShopSettings } from '@/context/ShopSettingsContext';
+import { useLanguage } from '@/context/LanguageContext';
 import { formatINR } from '@/lib/utils';
 import { generateDeliveryRouteUrl } from '@/lib/whatsapp';
 
 export default function CartCheckoutPage() {
   const { items, updateQuantity, removeItem, clearCart, totalAmount, totalItems } = useCart();
   const { settings } = useShopSettings();
+  const { t } = useLanguage();
 
   // Form State
   const [customerName, setCustomerName] = useState('');
@@ -515,7 +517,7 @@ export default function CartCheckoutPage() {
                   {/* Customer Name */}
                   <div>
                     <label className="block text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-wider">
-                      Your Full Name <span className="text-rose-500">*</span>
+                      {t('cart.fullName', 'Your Full Name')} <span className="text-rose-500">*</span>
                     </label>
                     <div className="relative">
                       <User className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
@@ -533,7 +535,7 @@ export default function CartCheckoutPage() {
                   {/* Mobile Number */}
                   <div>
                     <label className="block text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-wider">
-                      10-Digit Mobile Number <span className="text-rose-500">*</span>
+                      {t('cart.phone', '10-Digit Mobile Number')} <span className="text-rose-500">*</span>
                     </label>
                     <div className="relative">
                       <Phone className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
@@ -553,7 +555,7 @@ export default function CartCheckoutPage() {
                   <div>
                     <div className="flex items-center justify-between mb-1.5 flex-wrap gap-2">
                       <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">
-                        Delivery Address or Shop Pickup <span className="text-rose-500">*</span>
+                        {t('cart.address', 'Delivery Address or Shop Pickup')} <span className="text-rose-500">*</span>
                       </label>
                       <button
                         type="button"
@@ -564,12 +566,12 @@ export default function CartCheckoutPage() {
                         {isLocating ? (
                           <>
                             <Loader2 className="w-3.5 h-3.5 animate-spin text-sky-600" />
-                            <span>Detecting GPS...</span>
+                            <span>{t('cart.gpsDetecting', 'Detecting GPS...')}</span>
                           </>
                         ) : (
                           <>
                             <Navigation className="w-3.5 h-3.5 text-sky-600" />
-                            <span>📍 Use My Live GPS Location</span>
+                            <span>📍 {t('cart.detectGps', 'Use My Live GPS Location')}</span>
                           </>
                         )}
                       </button>
@@ -637,7 +639,7 @@ export default function CartCheckoutPage() {
                       ) : (
                         <>
                           <MessageCircle className="w-5 h-5 fill-white" />
-                          <span>Generate Order &amp; WhatsApp Route</span>
+                          <span>{t('cart.checkoutBtn', 'Generate Order & WhatsApp Route')}</span>
                         </>
                       )}
                     </button>

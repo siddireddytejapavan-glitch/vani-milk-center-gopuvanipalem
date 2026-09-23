@@ -4,6 +4,7 @@ import React, { useState, useMemo } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Search, X, SlidersHorizontal, PackageSearch } from 'lucide-react';
 import ProductCard, { ProductType } from '@/components/customer/ProductCard';
+import { useLanguage } from '@/context/LanguageContext';
 
 interface CategoryType {
   id: string;
@@ -21,6 +22,7 @@ export default function ProductsClientView({
   const searchParams = useSearchParams();
   const initialCategory = searchParams.get('category') || 'all';
 
+  const { t } = useLanguage();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState(initialCategory);
   const [sortBy, setSortBy] = useState<'popular' | 'price-asc' | 'price-desc' | 'newest'>('popular');
@@ -145,7 +147,7 @@ export default function ProductsClientView({
                 : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
             }`}
           >
-            All Categories ({initialProducts.length})
+            {t('products.all', 'All Categories')} ({initialProducts.length})
           </button>
 
           {categories.map((cat) => {
