@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import Image from 'next/image';
+import { useRouter } from 'next/navigation';
 import {
   Plus,
   Edit2,
@@ -13,6 +14,7 @@ import {
   CheckCircle2,
   Loader2,
   Package,
+  Star,
 } from 'lucide-react';
 import { formatINR } from '@/lib/utils';
 
@@ -52,6 +54,7 @@ export default function ProductManager({
   initialProducts: ProductItem[];
   categories: Array<{ id: string; name: string; slug: string }>;
 }) {
+  const router = useRouter();
   const [products, setProducts] = useState<ProductItem[]>(initialProducts);
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
@@ -216,12 +219,13 @@ export default function ProductManager({
 
       if (editingProduct) {
         setProducts(products.map((p) => (p.id === data.product.id ? data.product : p)));
-        showNotification('Product updated successfully!');
+        showNotification('Product updated successfully! Customer catalog refreshed.');
       } else {
         setProducts([data.product, ...products]);
-        showNotification('Product added successfully!');
+        showNotification('Product added successfully! Customer catalog refreshed.');
       }
 
+      router.refresh();
       setIsModalOpen(false);
     } catch (err: any) {
       showNotification(err.message || 'Error saving product', 'error');
@@ -245,8 +249,9 @@ export default function ProductManager({
       }
 
       setProducts(products.filter((p) => p.id !== isDeleting.id));
-      showNotification('Product deleted successfully!');
+      showNotification('Product deleted successfully! Customer catalog refreshed.');
       setIsDeleting(null);
+      router.refresh();
     } catch (err: any) {
       showNotification(err.message || 'Error deleting product', 'error');
     }
@@ -265,8 +270,31 @@ export default function ProductManager({
         const data = await res.json();
         setProducts(products.map((p) => (p.id === product.id ? data.product : p)));
         showNotification(
-          `Product marked as ${!product.isActive ? 'Active' : 'Unavailable'}`
+          `Product marked as ${!product.isActive ? 'Active (Visible on Customer Site)' : 'Unavailable (Hidden from Customer Site)'}`
         );
+        router.refresh();
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  // Toggle featured status directly
+  const handleToggleFeatured = async (product: ProductItem) => {
+    try {
+      const res = await fetch(`/api/products/${product.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isFeatured: !product.isFeatured }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        setProducts(products.map((p) => (p.id === product.id ? data.product : p)));
+        showNotification(
+          `Product ${!product.isFeatured ? 'featured on Home page' : 'removed from Featured products'}`
+        );
+        router.refresh();
       }
     } catch (e) {
       console.error(e);
@@ -435,18 +463,36 @@ export default function ProductManager({
                     </span>
                   </td>
 
-                  {/* Status Toggle */}
+                  {/* Status & Featured Toggles */}
                   <td className="px-6 py-4">
-                    <button
-                      onClick={() => handleToggleActive(prod)}
-                      className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-extrabold transition-colors ${
-                        prod.isActive
-                          ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200'
-                          : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                      }`}
-                    >
-                      {prod.isActive ? 'Active' : 'Unavailable'}
-                    </button>
+                    <div className="flex flex-col gap-1.5 items-start">
+                      <button
+                        type="button"
+                        onClick={() => handleToggleActive(prod)}
+                        className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-extrabold transition-colors cursor-pointer ${
+                          prod.isActive
+                            ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200'
+                            : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                        }`}
+                        title="Click to toggle product visibility on customer site"
+                      >
+                        {prod.isActive ? 'Active' : 'Unavailable'}
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => handleToggleFeatured(prod)}
+                        className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold transition-colors cursor-pointer ${
+                          prod.isFeatured
+                            ? 'bg-amber-100 text-amber-900 border border-amber-300'
+                            : 'bg-slate-100 text-slate-400 hover:text-slate-600 border border-slate-200'
+                        }`}
+                        title="Click to toggle featured on Home page"
+                      >
+                        <Star className={`w-3 h-3 ${prod.isFeatured ? 'fill-amber-500 text-amber-500' : 'text-slate-400'}`} />
+                        <span>{prod.isFeatured ? 'Featured on Home' : 'Not Featured'}</span>
+                      </button>
+                    </div>
                   </td>
 
                   {/* Actions */}

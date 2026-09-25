@@ -23,6 +23,9 @@ yarn-error.log*
 public/uploads/*
 !public/uploads/.gitkeep
 
+# Raw media / heavy camera dumps
+public/images/products/pics/
+
 # TypeScript build info
 *.tsbuildinfo
 

@@ -2,6 +2,8 @@
 
 import React, { useState } from 'react';
 import Image from 'next/image';
+import { useRouter } from 'next/navigation';
+import { useShopSettings } from '@/context/ShopSettingsContext';
 import {
   Save,
   CheckCircle2,
@@ -34,6 +36,9 @@ export default function SettingsForm({
 }: {
   initialSettings: SettingsData;
 }) {
+  const router = useRouter();
+  const { refreshSettings } = useShopSettings();
+
   const [shopName, setShopName] = useState(initialSettings.shopName || '');
   const [phone, setPhone] = useState(initialSettings.phone || '');
   const [whatsappNumber, setWhatsappNumber] = useState(
@@ -121,6 +126,10 @@ export default function SettingsForm({
       if (!res.ok) {
         throw new Error(data.error || 'Failed to update settings');
       }
+
+      // Immediately propagate updated settings site-wide to customer context and server routes
+      await refreshSettings();
+      router.refresh();
 
       showNotification('Shop settings updated successfully! Customer site updated.');
     } catch (err: any) {

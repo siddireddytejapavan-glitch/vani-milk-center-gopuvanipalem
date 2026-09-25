@@ -271,7 +271,7 @@ export async function getFeaturedProductsAndCategories(): Promise<{
       }),
     ]);
 
-    if (dbProducts && dbProducts.length > 0) {
+    if (dbProducts.length > 0 || (dbCategories && dbCategories.length > 0)) {
       return {
         products: dbProducts as unknown as ProductData[],
         categories: dbCategories && dbCategories.length > 0 ? (dbCategories as CategoryData[]) : DEFAULT_CATEGORIES,
@@ -283,7 +283,7 @@ export async function getFeaturedProductsAndCategories(): Promise<{
     }
   }
 
-  // Graceful fallback: return top featured defaults
+  // Graceful fallback: return top featured defaults only if DB is empty or unreachable
   const featured = DEFAULT_PRODUCTS.filter((p) => p.isFeatured);
   return {
     products: featured.length > 0 ? featured : DEFAULT_PRODUCTS,
@@ -336,9 +336,10 @@ export async function getAllProductsAndCategories(
     if (search && search.trim()) {
       const query = search.trim();
       whereClause.OR = [
-        { name: { contains: query, mode: 'insensitive' } },
-        { description: { contains: query, mode: 'insensitive' } },
-        { quality: { contains: query, mode: 'insensitive' } },
+        { name: { contains: query } },
+        { description: { contains: query } },
+        { quality: { contains: query } },
+        { variants: { some: { packSize: { contains: query } } } },
       ];
     }
 
@@ -358,7 +359,7 @@ export async function getAllProductsAndCategories(
       }),
     ]);
 
-    if (dbProducts && dbProducts.length > 0) {
+    if (dbProducts.length > 0 || (dbCategories && dbCategories.length > 0)) {
       return {
         products: dbProducts as unknown as ProductData[],
         categories: dbCategories && dbCategories.length > 0 ? (dbCategories as CategoryData[]) : DEFAULT_CATEGORIES,
@@ -371,6 +372,53 @@ export async function getAllProductsAndCategories(
   }
 
   return getFilteredFallbackProducts(categorySlug, search);
+}
+
+// Admin-only: Returns ALL products (including inactive) for admin management panel
+export async function getAllProductsAndCategoriesForAdmin(): Promise<{
+  products: ProductData[];
+  categories: CategoryData[];
+}> {
+  if (!isDatabaseConfigured()) {
+    // Return all DEFAULT_PRODUCTS for admin (no active filter)
+    return {
+      products: DEFAULT_PRODUCTS,
+      categories: DEFAULT_CATEGORIES,
+    };
+  }
+
+  try {
+    const [dbProducts, dbCategories] = await Promise.all([
+      prisma.product.findMany({
+        include: {
+          category: true,
+          variants: {
+            orderBy: { price: 'asc' },
+          },
+        },
+        orderBy: [{ isFeatured: 'desc' }, { createdAt: 'desc' }],
+      }),
+      prisma.category.findMany({
+        orderBy: { displayOrder: 'asc' },
+      }),
+    ]);
+
+    if (dbProducts.length > 0 || (dbCategories && dbCategories.length > 0)) {
+      return {
+        products: dbProducts as unknown as ProductData[],
+        categories: dbCategories && dbCategories.length > 0 ? (dbCategories as CategoryData[]) : DEFAULT_CATEGORIES,
+      };
+    }
+  } catch (error) {
+    if (process.env.NODE_ENV !== 'production') {
+      console.warn('Database query for admin products failed, using defaults:', (error as any)?.message || error);
+    }
+  }
+
+  return {
+    products: DEFAULT_PRODUCTS,
+    categories: DEFAULT_CATEGORIES,
+  };
 }
 
 export function findFallbackVariant(variantId: string): { variant: VariantData; product: ProductData } | null {

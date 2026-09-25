@@ -75,6 +75,13 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    if (!isDatabaseConfigured()) {
+      return NextResponse.json(
+        { error: 'Database is not configured. Products cannot be created without a database connection.' },
+        { status: 503 }
+      );
+    }
+
     const body = await request.json();
     const {
       name,

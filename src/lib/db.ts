@@ -6,11 +6,6 @@ export function isDatabaseConfigured(): boolean {
   const trimmed = url.trim();
   if (!trimmed || trimmed === '""' || trimmed === "''") return false;
 
-  // In production (e.g. Vercel), provider is PostgreSQL so URL must be postgresql:// or postgres://
-  if (process.env.NODE_ENV === 'production') {
-    return trimmed.startsWith('postgresql://') || trimmed.startsWith('postgres://');
-  }
-
   return (
     trimmed.startsWith('postgresql://') ||
     trimmed.startsWith('postgres://') ||

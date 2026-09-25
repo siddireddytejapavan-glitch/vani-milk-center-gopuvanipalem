@@ -47,6 +47,13 @@ export async function PUT(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    if (!isDatabaseConfigured()) {
+      return NextResponse.json(
+        { error: 'Database is not configured. Settings cannot be saved without a database connection. Please set up DATABASE_URL in your .env file.' },
+        { status: 503 }
+      );
+    }
+
     const body = await request.json();
     const {
       shopName,
@@ -59,6 +66,13 @@ export async function PUT(request: Request) {
       aboutDescription,
       bannerText,
     } = body;
+
+    if (!shopName || !phone || !whatsappNumber) {
+      return NextResponse.json(
+        { error: 'Shop name, phone, and WhatsApp number are required.' },
+        { status: 400 }
+      );
+    }
 
     const cleanedWhatsApp = cleanWhatsAppNumber(whatsappNumber || '');
 
@@ -96,7 +110,7 @@ export async function PUT(request: Request) {
   } catch (error) {
     console.error('Error updating settings:', error);
     return NextResponse.json(
-      { error: 'Failed to update shop settings' },
+      { error: 'Failed to update shop settings. Please check your database connection.' },
       { status: 500 }
     );
   }

@@ -50,6 +50,13 @@ export async function PUT(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    if (!isDatabaseConfigured()) {
+      return NextResponse.json(
+        { error: 'Database is not configured. Products cannot be updated without a database connection.' },
+        { status: 503 }
+      );
+    }
+
     const { id } = await params;
     const body = await request.json();
     const {
@@ -167,6 +174,13 @@ export async function DELETE(
     const admin = await getCurrentAdmin();
     if (!admin) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    if (!isDatabaseConfigured()) {
+      return NextResponse.json(
+        { error: 'Database is not configured. Products cannot be deleted without a database connection.' },
+        { status: 503 }
+      );
     }
 
     const { id } = await params;
