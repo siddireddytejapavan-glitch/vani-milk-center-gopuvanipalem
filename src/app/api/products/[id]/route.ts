@@ -1,7 +1,11 @@
 import { NextResponse } from 'next/server';
+import { revalidatePath } from 'next/cache';
 import { prisma, isDatabaseConfigured } from '@/lib/db';
 import { getCurrentAdmin } from '@/lib/auth';
 import { DEFAULT_PRODUCTS } from '@/lib/catalog';
+
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 export async function GET(
   request: Request,
@@ -80,12 +84,37 @@ export async function PUT(
       return NextResponse.json({ error: 'Product not found' }, { status: 404 });
     }
 
+    // If categoryId was provided, safely resolve valid category
+    let targetCategoryId = existing.categoryId;
+    if (categoryId !== undefined && categoryId !== existing.categoryId) {
+      let validCategory = await prisma.category.findUnique({
+        where: { id: categoryId },
+      });
+
+      if (!validCategory) {
+        const normalizedSlug = categoryId.replace(/^cat-/, '').toLowerCase();
+        validCategory = await prisma.category.findFirst({
+          where: {
+            OR: [
+              { slug: normalizedSlug },
+              { name: { contains: normalizedSlug } },
+              { slug: categoryId.toLowerCase() },
+            ],
+          },
+        });
+      }
+
+      if (validCategory) {
+        targetCategoryId = validCategory.id;
+      }
+    }
+
     // Update product base fields
     await prisma.product.update({
       where: { id },
       data: {
         name: name !== undefined ? name : existing.name,
-        categoryId: categoryId !== undefined ? categoryId : existing.categoryId,
+        categoryId: targetCategoryId,
         description: description !== undefined ? description : existing.description,
         quality: quality !== undefined ? quality : existing.quality,
         imageUrl: imageUrl !== undefined ? imageUrl : existing.imageUrl,
@@ -153,10 +182,18 @@ export async function PUT(
       include: { category: true, variants: true },
     });
 
-    return NextResponse.json({
+    // Invalidate customer storefront and admin products page caches
+    revalidatePath('/', 'layout');
+    revalidatePath('/');
+    revalidatePath('/products');
+    revalidatePath('/admin/products');
+
+    const res = NextResponse.json({
       message: 'Product updated successfully',
       product: updated,
     });
+    res.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    return res;
   } catch (error) {
     console.error('Error updating product:', error);
     return NextResponse.json(
@@ -187,24 +224,50 @@ export async function DELETE(
 
     const existing = await prisma.product.findUnique({ where: { id } });
     if (!existing) {
-      return NextResponse.json({ error: 'Product not found' }, { status: 404 });
+      return NextResponse.json({ message: 'Product already deleted or removed' });
     }
 
-    // Disconnect order items to prevent foreign key constraint violations
-    await prisma.orderItem.updateMany({
-      where: { productId: id },
-      data: { productId: null, variantId: null },
+    // Atomic transaction for safe product and variant deletion with FK cleanup
+    await prisma.$transaction(async (tx) => {
+      // 1. Get all variants of this product
+      const variants = await tx.productVariant.findMany({
+        where: { productId: id },
+        select: { id: true },
+      });
+      const variantIds = variants.map((v) => v.id);
+
+      // 2. Disconnect order items to prevent foreign key constraint violations
+      if (variantIds.length > 0) {
+        await tx.orderItem.updateMany({
+          where: { variantId: { in: variantIds } },
+          data: { variantId: null, productId: null },
+        });
+      }
+      await tx.orderItem.updateMany({
+        where: { productId: id },
+        data: { productId: null, variantId: null },
+      });
+
+      // 3. Delete product variants
+      await tx.productVariant.deleteMany({
+        where: { productId: id },
+      });
+
+      // 4. Delete the product record
+      await tx.product.delete({
+        where: { id },
+      });
     });
 
-    await prisma.productVariant.deleteMany({
-      where: { productId: id },
-    });
+    // Invalidate customer storefront and admin products page caches
+    revalidatePath('/', 'layout');
+    revalidatePath('/');
+    revalidatePath('/products');
+    revalidatePath('/admin/products');
 
-    await prisma.product.delete({
-      where: { id },
-    });
-
-    return NextResponse.json({ message: 'Product deleted successfully' });
+    const res = NextResponse.json({ message: 'Product deleted successfully' });
+    res.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    return res;
   } catch (error) {
     console.error('Error deleting product:', error);
     return NextResponse.json(

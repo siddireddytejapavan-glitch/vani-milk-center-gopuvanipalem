@@ -128,6 +128,9 @@ export default function SettingsForm({
       }
 
       // Immediately propagate updated settings site-wide to customer context and server routes
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('vani_shop_settings_timestamp', Date.now().toString());
+      }
       await refreshSettings();
       router.refresh();
 

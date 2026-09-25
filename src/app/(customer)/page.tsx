@@ -13,6 +13,7 @@ import { getFeaturedProductsAndCategories } from '@/lib/catalog';
 import { ArrowRight, Sparkles } from 'lucide-react';
 
 export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 export default async function HomePage() {
   // Resilient fetch with automatic fallback if database is cold-starting or connecting

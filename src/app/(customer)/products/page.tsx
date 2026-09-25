@@ -7,6 +7,7 @@ import ProductsClientView from './ProductsClientView';
 import { getAllProductsAndCategories } from '@/lib/catalog';
 
 export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 export default async function ProductsPage() {
   const { products, categories } = await getAllProductsAndCategories();

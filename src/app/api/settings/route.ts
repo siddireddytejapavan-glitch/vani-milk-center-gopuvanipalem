@@ -1,12 +1,18 @@
 import { NextResponse } from 'next/server';
+import { revalidatePath } from 'next/cache';
 import { prisma, isDatabaseConfigured } from '@/lib/db';
 import { getCurrentAdmin } from '@/lib/auth';
 import { cleanWhatsAppNumber } from '@/lib/whatsapp';
 import { DEFAULT_SHOP_SETTINGS } from '@/lib/catalog';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 export async function GET() {
   if (!isDatabaseConfigured()) {
-    return NextResponse.json({ settings: DEFAULT_SHOP_SETTINGS });
+    const res = NextResponse.json({ settings: DEFAULT_SHOP_SETTINGS });
+    res.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    return res;
   }
 
   try {
@@ -31,12 +37,16 @@ export async function GET() {
       });
     }
 
-    return NextResponse.json({ settings });
+    const response = NextResponse.json({ settings });
+    response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    return response;
   } catch (error) {
     if (process.env.NODE_ENV !== 'production') {
       console.warn('Database error in /api/settings, returning default settings:', (error as any)?.message || error);
     }
-    return NextResponse.json({ settings: DEFAULT_SHOP_SETTINGS });
+    const res = NextResponse.json({ settings: DEFAULT_SHOP_SETTINGS });
+    res.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    return res;
   }
 }
 
@@ -103,10 +113,21 @@ export async function PUT(request: Request) {
       },
     });
 
-    return NextResponse.json({
+    // Invalidate server caches so all customer pages see the updated settings immediately
+    revalidatePath('/', 'layout');
+    revalidatePath('/');
+    revalidatePath('/products');
+    revalidatePath('/about');
+    revalidatePath('/contact');
+    revalidatePath('/cart');
+    revalidatePath('/admin/settings');
+
+    const res = NextResponse.json({
       message: 'Shop settings updated successfully',
       settings: updated,
     });
+    res.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    return res;
   } catch (error) {
     console.error('Error updating settings:', error);
     return NextResponse.json(

@@ -40,9 +40,18 @@ export const ShopSettingsProvider: React.FC<{
 }> = ({ initialSettings, children }) => {
   const [settings, setSettings] = useState<ShopSettingsData>(initialSettings || defaultSettings);
 
+  useEffect(() => {
+    if (initialSettings) {
+      setSettings(initialSettings);
+    }
+  }, [initialSettings]);
+
   const refreshSettings = async () => {
     try {
-      const res = await fetch('/api/settings');
+      const res = await fetch('/api/settings', {
+        cache: 'no-store',
+        headers: { 'Cache-Control': 'no-cache' },
+      });
       if (res.ok) {
         const data = await res.json();
         if (data.settings) {
@@ -56,6 +65,14 @@ export const ShopSettingsProvider: React.FC<{
 
   useEffect(() => {
     refreshSettings();
+
+    const handleStorage = (e: StorageEvent) => {
+      if (e.key === 'vani_shop_settings_timestamp') {
+        refreshSettings();
+      }
+    };
+    window.addEventListener('storage', handleStorage);
+    return () => window.removeEventListener('storage', handleStorage);
   }, []);
 
   return (

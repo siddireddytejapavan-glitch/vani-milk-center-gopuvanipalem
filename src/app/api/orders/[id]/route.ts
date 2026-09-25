@@ -1,6 +1,10 @@
 import { NextResponse } from 'next/server';
+import { revalidatePath } from 'next/cache';
 import { prisma, isDatabaseConfigured } from '@/lib/db';
 import { getCurrentAdmin } from '@/lib/auth';
+
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 const VALID_STATUSES = [
   'Pending',
@@ -45,10 +49,15 @@ export async function PUT(
       include: { items: true },
     });
 
-    return NextResponse.json({
+    revalidatePath('/admin/orders');
+    revalidatePath('/admin');
+
+    const res = NextResponse.json({
       message: 'Order status updated successfully',
       order: updated,
     });
+    res.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    return res;
   } catch (error) {
     console.error('Error updating order:', error);
     return NextResponse.json(
@@ -90,6 +99,51 @@ export async function GET(
     }
     return NextResponse.json(
       { error: 'Failed to fetch order details' },
+      { status: 500 }
+    );
+  }
+}
+
+export async function DELETE(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const admin = await getCurrentAdmin();
+    if (!admin) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const { id } = await params;
+
+    if (!isDatabaseConfigured()) {
+      return NextResponse.json({ message: 'Order deleted successfully' });
+    }
+
+    const existing = await prisma.order.findUnique({ where: { id } });
+    if (!existing) {
+      return NextResponse.json({ message: 'Order already deleted or removed' });
+    }
+
+    await prisma.$transaction(async (tx) => {
+      await tx.orderItem.deleteMany({
+        where: { orderId: id },
+      });
+      await tx.order.delete({
+        where: { id },
+      });
+    });
+
+    revalidatePath('/admin/orders');
+    revalidatePath('/admin');
+
+    const res = NextResponse.json({ message: 'Order deleted successfully' });
+    res.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    return res;
+  } catch (error) {
+    console.error('Error deleting order:', error);
+    return NextResponse.json(
+      { error: 'Failed to delete order' },
       { status: 500 }
     );
   }

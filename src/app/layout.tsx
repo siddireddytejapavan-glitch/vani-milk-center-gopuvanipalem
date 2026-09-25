@@ -3,6 +3,7 @@ import './globals.css';
 import { CartProvider } from '@/context/CartContext';
 import { ShopSettingsProvider } from '@/context/ShopSettingsContext';
 import { LanguageProvider } from '@/context/LanguageContext';
+import { getShopSettings } from '@/lib/catalog';
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL
   ? (process.env.NEXT_PUBLIC_SITE_URL.startsWith('http')
@@ -27,11 +28,13 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const settings = await getShopSettings();
+
   return (
     <html lang="en">
       <body className="min-h-screen relative text-slate-900 antialiased selection:bg-sky-100 selection:text-sky-800">
@@ -47,7 +50,7 @@ export default function RootLayout({
           aria-hidden="true"
         />
 
-        <ShopSettingsProvider>
+        <ShopSettingsProvider initialSettings={settings}>
           <LanguageProvider>
             <CartProvider>
               {children}

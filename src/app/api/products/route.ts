@@ -1,7 +1,11 @@
 import { NextResponse } from 'next/server';
+import { revalidatePath } from 'next/cache';
 import { prisma, isDatabaseConfigured } from '@/lib/db';
 import { getCurrentAdmin } from '@/lib/auth';
 import { getAllProductsAndCategories } from '@/lib/catalog';
+
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -58,13 +62,17 @@ export async function GET(request: Request) {
       }),
     ]);
 
-    return NextResponse.json({ products, categories });
+    const res = NextResponse.json({ products, categories });
+    res.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    return res;
   } catch (error) {
     if (process.env.NODE_ENV !== 'production') {
       console.warn('Failed to fetch products from DB, returning resilient defaults:', (error as any)?.message || error);
     }
     const fallback = await getAllProductsAndCategories(categorySlug, search);
-    return NextResponse.json({ products: fallback.products, categories: fallback.categories });
+    const res = NextResponse.json({ products: fallback.products, categories: fallback.categories });
+    res.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    return res;
   }
 }
 
@@ -108,11 +116,37 @@ export async function POST(request: Request) {
       );
     }
 
+    // Resolve valid category by ID, slug, or fallback to first available category
+    let validCategory = await prisma.category.findUnique({
+      where: { id: categoryId },
+    });
+
+    if (!validCategory) {
+      const normalizedSlug = categoryId.replace(/^cat-/, '').toLowerCase();
+      validCategory = await prisma.category.findFirst({
+        where: {
+          OR: [
+            { slug: normalizedSlug },
+            { name: { contains: normalizedSlug } },
+            { slug: categoryId.toLowerCase() },
+          ],
+        },
+      });
+    }
+
+    if (!validCategory) {
+      validCategory = await prisma.category.findFirst({
+        orderBy: { displayOrder: 'asc' },
+      });
+    }
+
+    const targetCategoryId = validCategory ? validCategory.id : categoryId;
+
     // Create product and its variants in a single transaction
     const newProduct = await prisma.product.create({
       data: {
         name,
-        categoryId,
+        categoryId: targetCategoryId,
         description,
         quality: quality || 'Fresh Quality Dairy',
         imageUrl: imageUrl || '/images/default-dairy.jpg',
@@ -134,10 +168,18 @@ export async function POST(request: Request) {
       },
     });
 
-    return NextResponse.json(
+    // Invalidate customer storefront and admin products page caches
+    revalidatePath('/', 'layout');
+    revalidatePath('/');
+    revalidatePath('/products');
+    revalidatePath('/admin/products');
+
+    const res = NextResponse.json(
       { message: 'Product created successfully', product: newProduct },
       { status: 201 }
     );
+    res.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    return res;
   } catch (error) {
     console.error('Error creating product:', error);
     return NextResponse.json(

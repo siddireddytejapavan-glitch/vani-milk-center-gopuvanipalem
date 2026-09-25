@@ -271,12 +271,10 @@ export async function getFeaturedProductsAndCategories(): Promise<{
       }),
     ]);
 
-    if (dbProducts.length > 0 || (dbCategories && dbCategories.length > 0)) {
-      return {
-        products: dbProducts as unknown as ProductData[],
-        categories: dbCategories && dbCategories.length > 0 ? (dbCategories as CategoryData[]) : DEFAULT_CATEGORIES,
-      };
-    }
+    return {
+      products: dbProducts as unknown as ProductData[],
+      categories: dbCategories && dbCategories.length > 0 ? (dbCategories as CategoryData[]) : DEFAULT_CATEGORIES,
+    };
   } catch (error) {
     if (process.env.NODE_ENV !== 'production') {
       console.warn('Database query for featured products failed, using defaults:', (error as any)?.message || error);
@@ -359,12 +357,10 @@ export async function getAllProductsAndCategories(
       }),
     ]);
 
-    if (dbProducts.length > 0 || (dbCategories && dbCategories.length > 0)) {
-      return {
-        products: dbProducts as unknown as ProductData[],
-        categories: dbCategories && dbCategories.length > 0 ? (dbCategories as CategoryData[]) : DEFAULT_CATEGORIES,
-      };
-    }
+    return {
+      products: dbProducts as unknown as ProductData[],
+      categories: dbCategories && dbCategories.length > 0 ? (dbCategories as CategoryData[]) : DEFAULT_CATEGORIES,
+    };
   } catch (error) {
     if (process.env.NODE_ENV !== 'production') {
       console.warn('Database query for all products failed, using defaults:', (error as any)?.message || error);
@@ -403,12 +399,10 @@ export async function getAllProductsAndCategoriesForAdmin(): Promise<{
       }),
     ]);
 
-    if (dbProducts.length > 0 || (dbCategories && dbCategories.length > 0)) {
-      return {
-        products: dbProducts as unknown as ProductData[],
-        categories: dbCategories && dbCategories.length > 0 ? (dbCategories as CategoryData[]) : DEFAULT_CATEGORIES,
-      };
-    }
+    return {
+      products: dbProducts as unknown as ProductData[],
+      categories: dbCategories && dbCategories.length > 0 ? (dbCategories as CategoryData[]) : DEFAULT_CATEGORIES,
+    };
   } catch (error) {
     if (process.env.NODE_ENV !== 'production') {
       console.warn('Database query for admin products failed, using defaults:', (error as any)?.message || error);

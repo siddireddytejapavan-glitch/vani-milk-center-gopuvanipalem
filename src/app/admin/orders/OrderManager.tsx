@@ -17,6 +17,8 @@ import {
   Send,
   X,
   Map,
+  Trash2,
+  Loader2,
 } from 'lucide-react';
 import { formatINR, formatDate } from '@/lib/utils';
 import {
@@ -69,6 +71,7 @@ export default function OrderManager({
   const [searchQuery, setSearchQuery] = useState('');
   const [functionOnly, setFunctionOnly] = useState(false);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
+  const [deletingOrderId, setDeletingOrderId] = useState<string | null>(null);
   const [activeRouteOrder, setActiveRouteOrder] = useState<OrderRecord | null>(null);
 
   // Status update handler
@@ -91,6 +94,31 @@ export default function OrderManager({
       console.error(e);
     } finally {
       setUpdatingId(null);
+    }
+  };
+
+  // Delete order handler
+  const handleDeleteOrder = async (orderId: string) => {
+    if (!window.confirm(`Are you sure you want to delete order #${orderId.slice(-6).toUpperCase()}?`)) {
+      return;
+    }
+
+    setDeletingOrderId(orderId);
+    try {
+      const res = await fetch(`/api/orders/${orderId}`, {
+        method: 'DELETE',
+      });
+
+      if (!res.ok) {
+        throw new Error('Failed to delete order');
+      }
+
+      setOrders(orders.filter((o) => o.id !== orderId));
+    } catch (e) {
+      console.error(e);
+      alert('Failed to delete order');
+    } finally {
+      setDeletingOrderId(null);
     }
   };
 
@@ -286,6 +314,19 @@ export default function OrderManager({
                       <MessageCircle className="w-3.5 h-3.5 fill-white" />
                       <span>WhatsApp Customer</span>
                     </a>
+
+                    <button
+                      onClick={() => handleDeleteOrder(order.id)}
+                      disabled={deletingOrderId === order.id}
+                      className="p-1.5 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors disabled:opacity-50"
+                      title="Delete Order"
+                    >
+                      {deletingOrderId === order.id ? (
+                        <Loader2 className="w-4 h-4 animate-spin text-rose-500" />
+                      ) : (
+                        <Trash2 className="w-4 h-4" />
+                      )}
+                    </button>
                   </div>
                 </div>
 

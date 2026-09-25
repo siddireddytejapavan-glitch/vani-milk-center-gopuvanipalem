@@ -51,21 +51,35 @@ export async function getCurrentAdmin(): Promise<AdminSessionPayload | null> {
       return null;
     }
 
-    // Verify user still exists and has ADMIN role in DB (with resilient fallback if DB is offline)
+    // Verify user still exists and has ADMIN role in DB (with resilient fallback if DB is offline or reseeded)
     try {
-      const user = await prisma.user.findUnique({
+      let user = await prisma.user.findUnique({
         where: { id: payload.userId },
         select: { id: true, email: true, role: true, name: true },
       });
 
-      if (!user || user.role !== 'ADMIN') return null;
+      if (!user && payload.email) {
+        user = await prisma.user.findUnique({
+          where: { email: payload.email.toLowerCase().trim() },
+          select: { id: true, email: true, role: true, name: true },
+        });
+      }
 
-      return {
-        userId: user.id,
-        email: user.email,
-        role: user.role,
-        name: user.name,
-      };
+      if (user && user.role === 'ADMIN') {
+        return {
+          userId: user.id,
+          email: user.email,
+          role: user.role,
+          name: user.name,
+        };
+      }
+
+      const defaultAdminEmail = (process.env.ADMIN_EMAIL || 'siddreddylakshmankumar@gmail.com').toLowerCase().trim();
+      if (payload.role === 'ADMIN' && payload.email?.toLowerCase().trim() === defaultAdminEmail) {
+        return payload;
+      }
+
+      return null;
     } catch {
       // If DB is unreachable, trust validly signed JWT admin payload
       if (payload.role === 'ADMIN') {

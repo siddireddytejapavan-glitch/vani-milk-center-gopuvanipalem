@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import {
@@ -59,10 +59,15 @@ export default function ProductManager({
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
 
+  useEffect(() => {
+    setProducts(initialProducts);
+  }, [initialProducts]);
+
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<ProductItem | null>(null);
   const [isDeleting, setIsDeleting] = useState<ProductItem | null>(null);
+  const [isDeletingLoading, setIsDeletingLoading] = useState(false);
 
   // Form Fields
   const [name, setName] = useState('');
@@ -104,7 +109,10 @@ export default function ProductManager({
   const openEditModal = (p: ProductItem) => {
     setEditingProduct(p);
     setName(p.name);
-    setCategoryId(p.categoryId);
+    const matchingCat = categories.find(
+      (c) => c.id === p.categoryId || c.slug === p.categoryId || c.id === p.category?.id || c.slug === p.category?.slug
+    );
+    setCategoryId(matchingCat ? matchingCat.id : (categories[0]?.id || ''));
     setDescription(p.description);
     setQuality(p.quality);
     setImageUrl(p.imageUrl);
@@ -183,8 +191,8 @@ export default function ProductManager({
       return;
     }
 
-    if (variants.some((v) => !v.packSize || !v.price)) {
-      showNotification('All variants must have a pack size and price.', 'error');
+    if (variants.some((v) => !v.packSize || v.price === '' || isNaN(Number(v.price)))) {
+      showNotification('All variants must have a pack size and valid price.', 'error');
       return;
     }
 
@@ -225,6 +233,10 @@ export default function ProductManager({
         showNotification('Product added successfully! Customer catalog refreshed.');
       }
 
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('vani_catalog_timestamp', Date.now().toString());
+      }
+
       router.refresh();
       setIsModalOpen(false);
     } catch (err: any) {
@@ -238,6 +250,7 @@ export default function ProductManager({
   const confirmDeleteProduct = async () => {
     if (!isDeleting) return;
 
+    setIsDeletingLoading(true);
     try {
       const res = await fetch(`/api/products/${isDeleting.id}`, {
         method: 'DELETE',
@@ -249,11 +262,16 @@ export default function ProductManager({
       }
 
       setProducts(products.filter((p) => p.id !== isDeleting.id));
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('vani_catalog_timestamp', Date.now().toString());
+      }
       showNotification('Product deleted successfully! Customer catalog refreshed.');
       setIsDeleting(null);
       router.refresh();
     } catch (err: any) {
       showNotification(err.message || 'Error deleting product', 'error');
+    } finally {
+      setIsDeletingLoading(false);
     }
   };
 
@@ -269,6 +287,9 @@ export default function ProductManager({
       if (res.ok) {
         const data = await res.json();
         setProducts(products.map((p) => (p.id === product.id ? data.product : p)));
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('vani_catalog_timestamp', Date.now().toString());
+        }
         showNotification(
           `Product marked as ${!product.isActive ? 'Active (Visible on Customer Site)' : 'Unavailable (Hidden from Customer Site)'}`
         );
@@ -291,6 +312,9 @@ export default function ProductManager({
       if (res.ok) {
         const data = await res.json();
         setProducts(products.map((p) => (p.id === product.id ? data.product : p)));
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('vani_catalog_timestamp', Date.now().toString());
+        }
         showNotification(
           `Product ${!product.isFeatured ? 'featured on Home page' : 'removed from Featured products'}`
         );
@@ -787,16 +811,19 @@ export default function ProductManager({
 
             <div className="grid grid-cols-2 gap-3 pt-2">
               <button
+                disabled={isDeletingLoading}
                 onClick={() => setIsDeleting(null)}
-                className="py-2.5 px-4 rounded-xl border border-slate-200 text-slate-700 font-bold text-xs hover:bg-slate-50 transition-colors"
+                className="py-2.5 px-4 rounded-xl border border-slate-200 text-slate-700 font-bold text-xs hover:bg-slate-50 transition-colors disabled:opacity-50"
               >
                 Cancel
               </button>
               <button
+                disabled={isDeletingLoading}
                 onClick={confirmDeleteProduct}
-                className="py-2.5 px-4 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs shadow-md transition-colors"
+                className="py-2.5 px-4 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs shadow-md transition-colors disabled:opacity-50 flex items-center justify-center gap-1.5"
               >
-                Delete Product
+                {isDeletingLoading && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                <span>{isDeletingLoading ? 'Deleting...' : 'Delete Product'}</span>
               </button>
             </div>
           </div>

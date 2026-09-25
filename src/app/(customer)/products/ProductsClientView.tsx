@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Search, X, SlidersHorizontal, PackageSearch } from 'lucide-react';
 import ProductCard, { ProductType } from '@/components/customer/ProductCard';
@@ -23,14 +23,46 @@ export default function ProductsClientView({
   const initialCategory = searchParams.get('category') || 'all';
 
   const { t } = useLanguage();
+  const [products, setProducts] = useState<ProductType[]>(initialProducts);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState(initialCategory);
   const [sortBy, setSortBy] = useState<'popular' | 'price-asc' | 'price-desc' | 'newest'>('popular');
   const [inStockOnly, setInStockOnly] = useState(false);
 
+  useEffect(() => {
+    setProducts(initialProducts);
+  }, [initialProducts]);
+
+  const refreshProducts = async () => {
+    try {
+      const res = await fetch('/api/products', {
+        cache: 'no-store',
+        headers: { 'Cache-Control': 'no-cache' },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.products) {
+          setProducts(data.products);
+        }
+      }
+    } catch (e) {
+      console.error('Failed to sync products', e);
+    }
+  };
+
+  useEffect(() => {
+    const handleStorage = (e: StorageEvent) => {
+      if (e.key === 'vani_catalog_timestamp') {
+        refreshProducts();
+      }
+    };
+    window.addEventListener('storage', handleStorage);
+    return () => window.removeEventListener('storage', handleStorage);
+  }, []);
+
   // Filter & Sort Logic
   const filteredProducts = useMemo(() => {
-    let list = [...initialProducts];
+    let list = [...products];
 
     // Category Filter
     if (selectedCategory !== 'all') {
@@ -76,7 +108,7 @@ export default function ProductsClientView({
     });
 
     return list;
-  }, [initialProducts, selectedCategory, searchQuery, sortBy, inStockOnly]);
+  }, [products, selectedCategory, searchQuery, sortBy, inStockOnly]);
 
   return (
     <div className="space-y-8">
@@ -147,12 +179,12 @@ export default function ProductsClientView({
                 : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
             }`}
           >
-            {t('products.all', 'All Categories')} ({initialProducts.length})
+            {t('products.all', 'All Categories')} ({products.length})
           </button>
 
           {categories.map((cat) => {
             const isSelected = selectedCategory === cat.slug;
-            const count = initialProducts.filter(
+            const count = products.filter(
               (p) => p.category?.slug === cat.slug
             ).length;
 
@@ -177,7 +209,7 @@ export default function ProductsClientView({
       {/* Results Count */}
       <div className="flex items-center justify-between text-xs text-slate-500 font-semibold px-1">
         <span>
-          Showing {filteredProducts.length} of {initialProducts.length} dairy products
+          Showing {filteredProducts.length} of {products.length} dairy products
         </span>
         {(searchQuery || selectedCategory !== 'all' || inStockOnly) && (
           <button
