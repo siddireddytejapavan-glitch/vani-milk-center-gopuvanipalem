@@ -76,7 +76,7 @@ export default function SettingsForm({
     text: string;
   } | null>(null);
 
-  // Supabase Database Connection State
+  // PostgreSQL Database Connection State
   const [dbStatus, setDbStatus] = useState<any>(null);
   const [isLoadingDbStatus, setIsLoadingDbStatus] = useState(false);
   const [isSeedingDb, setIsSeedingDb] = useState(false);
@@ -244,10 +244,10 @@ export default function SettingsForm({
       {/* Header */}
       <div>
         <h2 className="text-2xl font-black text-slate-900 tracking-tight">
-          Shop Operations &amp; Supabase Settings
+          Shop Operations &amp; PostgreSQL Database Settings
         </h2>
         <p className="text-xs text-slate-500 mt-1">
-          Manage your Supabase PostgreSQL cloud database, store information, customer WhatsApp hotline, and admin credentials.
+          Manage your PostgreSQL database, store information, customer WhatsApp hotline, and admin credentials.
         </p>
       </div>
 
@@ -270,7 +270,7 @@ export default function SettingsForm({
       )}
 
       {/* ======================================================================== */}
-      {/* 1. SUPABASE POSTGRESQL DATABASE CLOUD HUB */}
+      {/* 1. POSTGRESQL DATABASE HUB */}
       {/* ======================================================================== */}
       <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-sky-950 text-white rounded-3xl p-6 sm:p-8 shadow-xl border border-slate-700/60 space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-700/70 pb-5">
@@ -280,7 +280,7 @@ export default function SettingsForm({
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h3 className="font-black text-lg">Supabase PostgreSQL Database</h3>
+                <h3 className="font-black text-lg">PostgreSQL Database</h3>
                 <span
                   className={`text-[10px] uppercase font-black px-2.5 py-0.5 rounded-full ${
                     dbStatus?.status === 'connected'
@@ -288,11 +288,11 @@ export default function SettingsForm({
                       : 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
                   }`}
                 >
-                  {dbStatus?.status === 'connected' ? '● Connected' : '○ Ready for Credentials'}
+                  {dbStatus?.status === 'connected' ? '● Connected' : '○ Ready for Connection'}
                 </span>
               </div>
               <p className="text-xs text-slate-300 mt-0.5">
-                Managed PostgreSQL Cloud Engine • Project: <code className="text-sky-300 font-mono">scgsknoptivsuphzxzoz</code>
+                PostgreSQL Engine • Host: <code className="text-sky-300 font-mono">{dbStatus?.host || 'localhost:5432'}</code>
               </p>
             </div>
           </div>
@@ -302,20 +302,11 @@ export default function SettingsForm({
               type="button"
               onClick={fetchDbStatus}
               disabled={isLoadingDbStatus}
-              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-xs font-semibold transition-colors disabled:opacity-50 cursor-pointer"
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-xs font-semibold transition-colors disabled:opacity-50 cursor-pointer"
             >
               <RefreshCw className={`w-3.5 h-3.5 ${isLoadingDbStatus ? 'animate-spin' : ''}`} />
               <span>Test Connection</span>
             </button>
-            <a
-              href="https://supabase.com/dashboard/org/scgsknoptivsuphzxzoz"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-sky-500 hover:bg-sky-400 text-slate-950 text-xs font-bold transition-all shadow cursor-pointer"
-            >
-              <span>Open Supabase</span>
-              <ExternalLink className="w-3.5 h-3.5" />
-            </a>
           </div>
         </div>
 
@@ -351,7 +342,7 @@ export default function SettingsForm({
               <span>Initial Database Seeding &amp; Table Population</span>
             </p>
             <p className="text-slate-400 text-[11px]">
-              Sync all fresh dairy products, curd buckets, ghee, and default settings directly into your Supabase database.
+              Sync all fresh dairy products, curd buckets, ghee, and default settings directly into your PostgreSQL database.
             </p>
           </div>
           <button
@@ -368,7 +359,7 @@ export default function SettingsForm({
             ) : (
               <>
                 <RefreshCw className="w-3.5 h-3.5" />
-                <span>Seed / Populate Supabase</span>
+                <span>Seed / Populate PostgreSQL</span>
               </>
             )}
           </button>

@@ -3,29 +3,25 @@ require('dotenv').config();
 
 async function checkDatabaseConnection() {
   console.log('======================================================');
-  console.log('  VANI MILK CENTER — DATABASE CONNECTION DIAGNOSTICS');
+  console.log('  VANI MILK CENTER — POSTGRESQL CONNECTION TEST');
   console.log('======================================================\n');
 
   const dbUrl = process.env.DATABASE_URL || '';
 
   if (!dbUrl) {
     console.error('❌ ERROR: DATABASE_URL is not set in your .env file.');
-    console.log('👉 Please set DATABASE_URL in .env to your Supabase PostgreSQL connection string.\n');
+    console.log('👉 Please set DATABASE_URL in .env to your PostgreSQL connection string, for example:');
+    console.log('   DATABASE_URL="postgresql://postgres:password@localhost:5432/vani_milk_center?schema=public"\n');
     process.exit(1);
   }
 
-  console.log('📋 Current DATABASE_URL configuration:');
+  console.log('📋 Current DATABASE_URL:');
   const maskedUrl = dbUrl.replace(/:([^@]+)@/, ':****@');
   console.log(`   ${maskedUrl}\n`);
 
-  if (dbUrl.includes('[YOUR-PASSWORD]') || dbUrl.includes('YOUR-PASSWORD')) {
-    console.warn('⚠️  ATTENTION: DATABASE_URL contains "[YOUR-PASSWORD]".');
-    console.log('👉 Please replace [YOUR-PASSWORD] in .env or .env.local with your actual Supabase database password.');
-    console.log('   (Found in your Supabase project dashboard -> Project Settings -> Database)\n');
-  }
-
-  if (dbUrl.includes('saeeiphkhzpbujbmmiux')) {
-    console.log('✅ Supabase Project Reference identified: saeeiphkhzpbujbmmiux (Region: ap-southeast-1)');
+  if (dbUrl.includes('[YOUR-PASSWORD]') || dbUrl.includes('YOUR-PASSWORD') || dbUrl.includes('[PASSWORD]')) {
+    console.warn('⚠️  ATTENTION: DATABASE_URL contains a password placeholder.');
+    console.log('👉 Please replace the placeholder with your actual PostgreSQL database password.\n');
   }
 
   console.log('⏳ Attempting connection to PostgreSQL...');
@@ -35,7 +31,7 @@ async function checkDatabaseConnection() {
 
   try {
     const result = await prisma.$queryRawUnsafe('SELECT 1 as connected');
-    console.log('✅ SUCCESS: Successfully connected to Supabase PostgreSQL database!');
+    console.log('✅ SUCCESS: Successfully connected to PostgreSQL database!');
     console.log('   Connection verified: Database is alive and accepting queries.\n');
 
     // Check tables
@@ -53,12 +49,12 @@ async function checkDatabaseConnection() {
       console.log(`   - Orders: ${orderCount}\n`);
     } catch (tblErr) {
       console.log('ℹ️  Database connected, but tables may need initialization.');
-      console.log('   Run: cmd.exe /c "npx prisma db push" or execute supabase-schema.sql in Supabase SQL editor.\n');
+      console.log('   Run: cmd.exe /c "npx prisma db push" && cmd.exe /c "node prisma/seed.js"\n');
     }
   } catch (err) {
     console.error('❌ Connection Failed:');
     console.error(`   ${err.message || err}`);
-    console.log('\n💡 Tip: Your Next.js website continues running smoothly using resilient offline catalog defaults.');
+    console.log('\n💡 Tip: Your Next.js website continues running smoothly using resilient offline catalog defaults in src/lib/catalog.ts.');
   } finally {
     await prisma.$disconnect().catch(() => {});
     console.log('======================================================\n');

@@ -17,7 +17,7 @@ export async function GET() {
     return NextResponse.json({
       ...dbInfo,
       status: 'pending_connection',
-      message: 'Supabase PostgreSQL password or connection string needs to be configured in .env',
+      message: 'PostgreSQL connection string needs to be configured in .env',
       counts: {
         users: 1,
         categories: DEFAULT_CATEGORIES.length,
@@ -42,7 +42,7 @@ export async function GET() {
     return NextResponse.json({
       ...dbInfo,
       status: 'connected',
-      message: 'Successfully connected to Supabase PostgreSQL database!',
+      message: 'Successfully connected to PostgreSQL database!',
       counts: {
         users: userCount,
         categories: categoryCount,
@@ -73,7 +73,7 @@ export async function POST(request: Request) {
       return NextResponse.json(
         {
           error:
-            'Cannot seed: Database is not configured. Please add your Supabase database password to .env first.',
+            'Cannot seed: Database is not configured. Please add your PostgreSQL connection string to .env first.',
         },
         { status: 503 }
       );
@@ -196,7 +196,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       success: true,
-      message: 'Supabase PostgreSQL database successfully seeded with all initial data!',
+      message: 'PostgreSQL database successfully seeded with all initial data!',
     });
   } catch (error: any) {
     console.error('Seeding error:', error);

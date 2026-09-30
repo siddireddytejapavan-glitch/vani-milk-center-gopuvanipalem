@@ -37,7 +37,7 @@ export async function POST(request: Request) {
 
     if (!isDatabaseConfigured()) {
       return NextResponse.json(
-        { error: 'Database is not yet connected. Please configure your Supabase connection.' },
+        { error: 'Database is not yet connected. Please configure your PostgreSQL connection.' },
         { status: 503 }
       );
     }

@@ -50,7 +50,7 @@ export async function PUT(request: Request) {
 
     if (!isDatabaseConfigured()) {
       return NextResponse.json(
-        { error: 'Database is not yet connected. Please connect Supabase to update credentials.' },
+        { error: 'Database is not yet connected. Please connect PostgreSQL to update credentials.' },
         { status: 503 }
       );
     }

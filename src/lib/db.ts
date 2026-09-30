@@ -23,31 +23,29 @@ export function getDatabaseInfo() {
   const url = process.env.DATABASE_URL || '';
   const isConfigured = isDatabaseConfigured();
   
-  let host = 'Not configured';
-  let projectRef = 'scgsknoptivsuphzxzoz';
-  let isPooler = false;
+  let host = 'localhost:5432';
+  let database = 'vani_milk_center';
 
   try {
     if (url.includes('@')) {
       const parts = url.split('@')[1];
       if (parts) {
-        host = parts.split('/')[0] || '';
+        host = parts.split('/')[0] || 'localhost:5432';
+        const dbPart = parts.split('/')[1];
+        if (dbPart) {
+          database = dbPart.split('?')[0] || 'vani_milk_center';
+        }
       }
-    }
-    if (url.includes('pooler.supabase.com')) {
-      isPooler = true;
     }
   } catch (e) {
     // ignore parsing errors
   }
 
   return {
-    provider: 'PostgreSQL (Supabase)',
+    provider: 'PostgreSQL',
     isConfigured,
     host,
-    projectRef,
-    isPooler,
-    supabaseDashboardUrl: 'https://supabase.com/dashboard/org/scgsknoptivsuphzxzoz',
+    database,
   };
 }
 
