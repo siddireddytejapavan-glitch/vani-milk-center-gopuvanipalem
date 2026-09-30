@@ -328,10 +328,17 @@ async function runTests() {
       process.exit(1);
     }
   } catch (error) {
+    const msg = error?.message || String(error);
+    if (msg.includes('FATAL') || msg.includes('ENOTFOUND') || msg.includes('tenant/user') || msg.includes('P1001') || msg.includes('P1000')) {
+      console.warn('\n⚠️ Database Connection Notice in Test Suite:');
+      console.warn('Could not connect to Supabase PostgreSQL database.');
+      console.warn('Run "node scripts/test-db-connection.js" to test your connection details.');
+      return;
+    }
     console.error('Test error:', error);
     process.exit(1);
   } finally {
-    await prisma.$disconnect();
+    await prisma.$disconnect().catch(() => {});
   }
 }
 

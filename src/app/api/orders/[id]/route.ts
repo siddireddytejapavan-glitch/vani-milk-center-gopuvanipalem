@@ -27,25 +27,57 @@ export async function PUT(
 
     const { id } = await params;
     const body = await request.json();
-    const { status } = body;
+    const { status, customerName, customerPhone, address, notes, isFunctionOrder, totalAmount } = body;
 
-    if (!status || !VALID_STATUSES.includes(status)) {
-      return NextResponse.json(
-        { error: `Invalid status. Valid values: ${VALID_STATUSES.join(', ')}` },
-        { status: 400 }
-      );
+    const updateData: any = {};
+
+    if (status !== undefined) {
+      if (!VALID_STATUSES.includes(status)) {
+        return NextResponse.json(
+          { error: `Invalid status. Valid values: ${VALID_STATUSES.join(', ')}` },
+          { status: 400 }
+        );
+      }
+      updateData.status = status;
+    }
+
+    if (customerName !== undefined && customerName.trim()) {
+      updateData.customerName = customerName.trim();
+    }
+
+    if (customerPhone !== undefined && customerPhone.trim()) {
+      updateData.customerPhone = customerPhone.replace(/\D/g, '');
+    }
+
+    if (address !== undefined && address.trim()) {
+      updateData.address = address.trim();
+    }
+
+    if (notes !== undefined) {
+      updateData.notes = notes ? notes.trim() : null;
+    }
+
+    if (isFunctionOrder !== undefined) {
+      updateData.isFunctionOrder = Boolean(isFunctionOrder);
+    }
+
+    if (totalAmount !== undefined) {
+      const num = parseFloat(totalAmount);
+      if (!isNaN(num) && num >= 0) {
+        updateData.totalAmount = num;
+      }
     }
 
     if (!isDatabaseConfigured()) {
       return NextResponse.json({
-        message: 'Order status updated successfully',
-        order: { id, status },
+        message: 'Order updated successfully',
+        order: { id, ...updateData },
       });
     }
 
     const updated = await prisma.order.update({
       where: { id },
-      data: { status },
+      data: updateData,
       include: { items: true },
     });
 
@@ -53,7 +85,7 @@ export async function PUT(
     revalidatePath('/admin');
 
     const res = NextResponse.json({
-      message: 'Order status updated successfully',
+      message: 'Order updated successfully',
       order: updated,
     });
     res.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');

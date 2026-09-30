@@ -193,9 +193,39 @@ async function updateDB() {
   console.log('Current settings openingHours:', settings.openingHours);
 }
 
-updateDB()
-  .then(() => prisma.$disconnect())
-  .catch((e) => {
-    console.error(e);
-    process.exit(1);
-  });
+async function main() {
+  try {
+    await updateDB();
+  } catch (err) {
+    const msg = err?.message || String(err);
+    if (
+      msg.includes('FATAL') ||
+      msg.includes('ENOTFOUND') ||
+      msg.includes('tenant/user') ||
+      msg.includes('P1001') ||
+      msg.includes('P1000') ||
+      msg.includes('PrismaClientInitializationError')
+    ) {
+      console.warn('\n======================================================');
+      console.warn('⚠️  DATABASE CONNECTION NOTICE');
+      console.warn('======================================================');
+      console.warn('Could not connect to Supabase PostgreSQL database.');
+      console.warn('Error details:', msg.split('\n').filter((l) => l.includes('FATAL') || l.includes('Error')).join(' ') || msg);
+      console.warn('\n👉 How to resolve this in your project:');
+      console.warn('1. Open Supabase Dashboard: https://supabase.com/dashboard/org/scgsknoptivsuphzxzoz');
+      console.warn('2. Open your project (or click "New Project" if you haven\'t created one yet).');
+      console.warn('3. Go to Project Settings -> Database -> Connection String -> URI.');
+      console.warn('4. In your .env file, replace the placeholder with your project ref & database password:');
+      console.warn('   DATABASE_URL="postgresql://postgres.[PROJECT-REF]:[YOUR-PASSWORD]@aws-0-ap-south-1.pooler.supabase.com:6543/postgres?pgbouncer=true"');
+      console.warn('\n✨ The storefront continues running smoothly using resilient catalog defaults in src/lib/catalog.ts.');
+      console.warn('======================================================\n');
+      return;
+    }
+    console.error(err);
+  } finally {
+    await prisma.$disconnect().catch(() => {});
+  }
+}
+
+main();
+

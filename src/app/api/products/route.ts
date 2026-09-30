@@ -3,6 +3,7 @@ import { revalidatePath } from 'next/cache';
 import { prisma, isDatabaseConfigured } from '@/lib/db';
 import { getCurrentAdmin } from '@/lib/auth';
 import { getAllProductsAndCategories } from '@/lib/catalog';
+import { alertProductUpdated } from '@/lib/email';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -39,10 +40,10 @@ export async function GET(request: Request) {
     if (search && search.trim()) {
       const query = search.trim();
       whereClause.OR = [
-        { name: { contains: query } },
-        { description: { contains: query } },
-        { quality: { contains: query } },
-        { variants: { some: { packSize: { contains: query } } } },
+        { name: { contains: query, mode: 'insensitive' } },
+        { description: { contains: query, mode: 'insensitive' } },
+        { quality: { contains: query, mode: 'insensitive' } },
+        { variants: { some: { packSize: { contains: query, mode: 'insensitive' } } } },
       ];
     }
 
@@ -173,6 +174,21 @@ export async function POST(request: Request) {
     revalidatePath('/');
     revalidatePath('/products');
     revalidatePath('/admin/products');
+
+    // Dispatch email alert to shop owner (non-blocking)
+    alertProductUpdated({
+      action: 'CREATED',
+      productName: newProduct.name,
+      productId: newProduct.id,
+      categoryName: newProduct.category?.name,
+      variants: newProduct.variants.map((v: any) => ({
+        packSize: v.packSize,
+        price: v.price,
+        stockQuantity: v.stockQuantity,
+      })),
+      adminName: admin.name,
+      adminEmail: admin.email,
+    }).catch((e) => console.warn('Product alert email failed:', e));
 
     const res = NextResponse.json(
       { message: 'Product created successfully', product: newProduct },

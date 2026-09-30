@@ -4,6 +4,7 @@ import { prisma, isDatabaseConfigured } from '@/lib/db';
 import { getCurrentAdmin } from '@/lib/auth';
 import { cleanWhatsAppNumber } from '@/lib/whatsapp';
 import { DEFAULT_SHOP_SETTINGS } from '@/lib/catalog';
+import { alertShopSettingsUpdated } from '@/lib/email';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -113,14 +114,19 @@ export async function PUT(request: Request) {
       },
     });
 
-    // Invalidate server caches so all customer pages see the updated settings immediately
-    revalidatePath('/', 'layout');
-    revalidatePath('/');
-    revalidatePath('/products');
-    revalidatePath('/about');
-    revalidatePath('/contact');
-    revalidatePath('/cart');
-    revalidatePath('/admin/settings');
+    // Dispatch email alert to shop owner (non-blocking)
+    alertShopSettingsUpdated({
+      changedFields: {
+        'Shop Name': updated.shopName,
+        'Phone Number': updated.phone,
+        'WhatsApp Hotline': updated.whatsappNumber,
+        'Store Address': updated.address,
+        'Opening Hours': updated.openingHours,
+        'Top Banner Text': updated.bannerText,
+      },
+      adminName: admin.name,
+      adminEmail: admin.email,
+    }).catch((e) => console.warn('Shop settings alert email failed:', e));
 
     const res = NextResponse.json({
       message: 'Shop settings updated successfully',

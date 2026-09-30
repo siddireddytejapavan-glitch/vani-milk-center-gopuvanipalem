@@ -1,6 +1,6 @@
 import React from 'react';
 import { prisma, isDatabaseConfigured } from '@/lib/db';
-import { getShopSettings } from '@/lib/catalog';
+import { getShopSettings, getAllProductsAndCategoriesForAdmin } from '@/lib/catalog';
 import OrderManager from './OrderManager';
 
 export const dynamic = 'force-dynamic';
@@ -22,13 +22,17 @@ export default async function AdminOrdersPage() {
     }
   }
 
-  const settings = await getShopSettings();
+  const [settings, catalogData] = await Promise.all([
+    getShopSettings(),
+    getAllProductsAndCategoriesForAdmin(),
+  ]);
 
   return (
     <div className="max-w-7xl mx-auto">
       <OrderManager
         initialOrders={orders as any}
         shopName={settings?.shopName || 'VANI MILK CENTER, GOPIVANIPALEM'}
+        availableProducts={catalogData.products as any}
       />
     </div>
   );

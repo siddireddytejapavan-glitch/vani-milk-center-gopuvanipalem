@@ -35,7 +35,14 @@ async function updateAdmin() {
 }
 
 updateAdmin()
-  .catch(console.error)
+  .catch((err) => {
+    const msg = err?.message || String(err);
+    if (msg.includes('FATAL') || msg.includes('ENOTFOUND') || msg.includes('tenant/user') || msg.includes('P1001') || msg.includes('P1000')) {
+      console.warn('⚠️ Notice: Could not connect to Supabase database. Please check your credentials in .env');
+      return;
+    }
+    console.error(err);
+  })
   .finally(async () => {
-    await prisma.$disconnect();
+    await prisma.$disconnect().catch(() => {});
   });

@@ -1,6 +1,7 @@
 datasource db {
-  provider = "sqlite"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 generator client {
@@ -39,6 +40,9 @@ model Product {
   orderItems  OrderItem[]
   createdAt   DateTime         @default(now())
   updatedAt   DateTime         @updatedAt
+
+  @@index([categoryId])
+  @@index([isActive])
 }
 
 model ProductVariant {
@@ -53,6 +57,8 @@ model ProductVariant {
   orderItems    OrderItem[]
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
+
+  @@index([productId])
 }
 
 model Order {
@@ -67,6 +73,9 @@ model Order {
   items           OrderItem[]
   createdAt       DateTime    @default(now())
   updatedAt       DateTime    @updatedAt
+
+  @@index([status])
+  @@index([createdAt])
 }
 
 model OrderItem {
@@ -82,18 +91,20 @@ model OrderItem {
   quantity    Int
   unitPrice   Float
   totalPrice  Float
+
+  @@index([orderId])
 }
 
 model ShopSettings {
-  id String @id @default("default-settings")
-  shopName String @default("VANI MILK CENTER, GOPIVANIPALEM")
-  phone String @default("7995597719")
-  whatsappNumber String @default("917995597719")
-  address String @default("Gopivanipalem, Andhra Pradesh")
-  openingHours String @default("Morning 5:00 AM - Evening 10:00 PM")
-  googleMapsUrl String @default("https://maps.google.com/?q=Gopivanipalem")
-  logoUrl String @default("/images/shop-logo.svg")
-  aboutDescription String @default("Welcome to Vani Milk Center, Gopivanipalem. We provide 100% pure & natural, hygienically processed milk, curd, ghee, paneer, buttermilk, and lassi for daily families, functions, and bulk catering orders.")
-  bannerText String @default("100% Pure & Natural Milk Products | Healthy Life Happy Life | Home Delivery: 7995597719")
-  updatedAt DateTime @updatedAt
+  id               String   @id @default("default-settings")
+  shopName         String   @default("VANI MILK CENTER, GOPIVANIPALEM")
+  phone            String   @default("7995597719")
+  whatsappNumber   String   @default("917995597719")
+  address          String   @default("Gopivanipalem, Andhra Pradesh")
+  openingHours     String   @default("Morning 5:00 AM - Evening 10:00 PM")
+  googleMapsUrl    String   @default("https://maps.google.com/?q=Gopivanipalem")
+  logoUrl          String   @default("/images/shop-logo.svg")
+  aboutDescription String   @default("Welcome to Vani Milk Center, Gopivanipalem. We provide 100% pure & natural, hygienically processed milk, curd, ghee, paneer, buttermilk, and lassi for daily families, functions, and bulk catering orders.")
+  bannerText       String   @default("100% Pure & Natural Milk Products | Healthy Life Happy Life | Home Delivery: 7995597719")
+  updatedAt        DateTime @updatedAt
 }

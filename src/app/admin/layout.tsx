@@ -14,6 +14,7 @@ import {
   Menu,
   X,
   Store,
+  Tag,
 } from 'lucide-react';
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -29,6 +30,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const navItems = [
     { name: 'Dashboard', href: '/admin', icon: LayoutDashboard },
     { name: 'Products & Variants', href: '/admin/products', icon: Package },
+    { name: 'Categories', href: '/admin/categories', icon: Tag },
     { name: 'Customer Orders', href: '/admin/orders', icon: ShoppingBag },
     { name: 'Shop Settings', href: '/admin/settings', icon: Settings },
   ];

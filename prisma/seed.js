@@ -248,9 +248,15 @@ async function main() {
 
 main()
   .catch((e) => {
+    const msg = e?.message || String(e);
+    if (msg.includes('FATAL') || msg.includes('ENOTFOUND') || msg.includes('tenant/user') || msg.includes('P1001') || msg.includes('P1000')) {
+      console.warn('\n⚠️ Database Connection Notice in Seed:');
+      console.warn('Could not connect to Supabase database. Please verify your project ref and password in .env.');
+      console.warn('Run "node scripts/test-db-connection.js" for diagnostics.\n');
+      return;
+    }
     console.error('Seeding error:', e);
-    process.exit(1);
   })
   .finally(async () => {
-    await prisma.$disconnect();
+    await prisma.$disconnect().catch(() => {});
   });

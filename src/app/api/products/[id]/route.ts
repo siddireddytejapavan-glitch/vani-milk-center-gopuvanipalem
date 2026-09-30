@@ -3,6 +3,7 @@ import { revalidatePath } from 'next/cache';
 import { prisma, isDatabaseConfigured } from '@/lib/db';
 import { getCurrentAdmin } from '@/lib/auth';
 import { DEFAULT_PRODUCTS } from '@/lib/catalog';
+import { alertProductUpdated } from '@/lib/email';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -182,11 +183,22 @@ export async function PUT(
       include: { category: true, variants: true },
     });
 
-    // Invalidate customer storefront and admin products page caches
-    revalidatePath('/', 'layout');
-    revalidatePath('/');
-    revalidatePath('/products');
-    revalidatePath('/admin/products');
+    // Dispatch email alert to shop owner (non-blocking)
+    if (updated) {
+      alertProductUpdated({
+        action: 'UPDATED',
+        productName: updated.name,
+        productId: updated.id,
+        categoryName: updated.category?.name,
+        variants: updated.variants?.map((v: any) => ({
+          packSize: v.packSize,
+          price: v.price,
+          stockQuantity: v.stockQuantity,
+        })),
+        adminName: admin.name,
+        adminEmail: admin.email,
+      }).catch((e) => console.warn('Product update alert failed:', e));
+    }
 
     const res = NextResponse.json({
       message: 'Product updated successfully',
@@ -259,11 +271,14 @@ export async function DELETE(
       });
     });
 
-    // Invalidate customer storefront and admin products page caches
-    revalidatePath('/', 'layout');
-    revalidatePath('/');
-    revalidatePath('/products');
-    revalidatePath('/admin/products');
+    // Dispatch email alert to shop owner (non-blocking)
+    alertProductUpdated({
+      action: 'DELETED',
+      productName: existing.name,
+      productId: existing.id,
+      adminName: admin.name,
+      adminEmail: admin.email,
+    }).catch((e) => console.warn('Product delete alert failed:', e));
 
     const res = NextResponse.json({ message: 'Product deleted successfully' });
     res.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');

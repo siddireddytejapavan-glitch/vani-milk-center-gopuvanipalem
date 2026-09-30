@@ -315,10 +315,10 @@ export async function GET(request: Request) {
     if (search && search.trim()) {
       const q = search.trim();
       whereClause.OR = [
-        { customerName: { contains: q } },
-        { customerPhone: { contains: q } },
-        { address: { contains: q } },
-        { id: { contains: q } },
+        { customerName: { contains: q, mode: 'insensitive' } },
+        { customerPhone: { contains: q, mode: 'insensitive' } },
+        { address: { contains: q, mode: 'insensitive' } },
+        { id: { contains: q, mode: 'insensitive' } },
       ];
     }
 

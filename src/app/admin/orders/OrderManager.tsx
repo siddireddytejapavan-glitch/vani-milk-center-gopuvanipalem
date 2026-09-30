@@ -19,6 +19,8 @@ import {
   Map,
   Trash2,
   Loader2,
+  Edit2,
+  Plus,
 } from 'lucide-react';
 import { formatINR, formatDate } from '@/lib/utils';
 import {
@@ -62,9 +64,11 @@ const STATUS_OPTIONS = [
 export default function OrderManager({
   initialOrders,
   shopName,
+  availableProducts = [],
 }: {
   initialOrders: OrderRecord[];
   shopName: string;
+  availableProducts?: any[];
 }) {
   const [orders, setOrders] = useState<OrderRecord[]>(initialOrders);
   const [statusFilter, setStatusFilter] = useState('all');
@@ -73,6 +77,28 @@ export default function OrderManager({
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [deletingOrderId, setDeletingOrderId] = useState<string | null>(null);
   const [activeRouteOrder, setActiveRouteOrder] = useState<OrderRecord | null>(null);
+
+  // Walk-in / Phone Order creation state
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isCreatingOrder, setIsCreatingOrder] = useState(false);
+  const [newCustomerName, setNewCustomerName] = useState('');
+  const [newCustomerPhone, setNewCustomerPhone] = useState('');
+  const [newAddress, setNewAddress] = useState('Shop Counter Pickup (Gopuvanipalem)');
+  const [newNotes, setNewNotes] = useState('');
+  const [newIsFunction, setNewIsFunction] = useState(false);
+  const [orderItemsList, setOrderItemsList] = useState<
+    Array<{ variantId: string; productName: string; packSize: string; unitPrice: number; quantity: number }>
+  >([]);
+
+  // Edit Order modal state
+  const [editingOrder, setEditingOrder] = useState<OrderRecord | null>(null);
+  const [editCustomerName, setEditCustomerName] = useState('');
+  const [editCustomerPhone, setEditCustomerPhone] = useState('');
+  const [editAddress, setEditAddress] = useState('');
+  const [editNotes, setEditNotes] = useState('');
+  const [editStatus, setEditStatus] = useState('Pending');
+  const [editIsFunction, setEditIsFunction] = useState(false);
+  const [isSavingEdit, setIsSavingEdit] = useState(false);
 
   // Status update handler
   const handleStatusChange = async (orderId: string, newStatus: string) => {
@@ -94,6 +120,124 @@ export default function OrderManager({
       console.error(e);
     } finally {
       setUpdatingId(null);
+    }
+  };
+
+  const openEditModal = (order: OrderRecord) => {
+    setEditingOrder(order);
+    setEditCustomerName(order.customerName);
+    setEditCustomerPhone(order.customerPhone);
+    setEditAddress(order.address);
+    setEditNotes(order.notes || '');
+    setEditStatus(order.status);
+    setEditIsFunction(order.isFunctionOrder);
+  };
+
+  const handleSaveEditOrder = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingOrder) return;
+
+    setIsSavingEdit(true);
+    try {
+      const res = await fetch(`/api/orders/${editingOrder.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          customerName: editCustomerName,
+          customerPhone: editCustomerPhone,
+          address: editAddress,
+          notes: editNotes,
+          status: editStatus,
+          isFunctionOrder: editIsFunction,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to update order');
+
+      setOrders(orders.map((o) => (o.id === editingOrder.id ? data.order : o)));
+      setEditingOrder(null);
+    } catch (err: any) {
+      alert(err.message || 'Failed to save order changes');
+    } finally {
+      setIsSavingEdit(false);
+    }
+  };
+
+  const handleCreateWalkinOrder = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newCustomerName.trim()) {
+      alert('Please enter customer name');
+      return;
+    }
+    if (orderItemsList.length === 0) {
+      alert('Please add at least one product item to the order');
+      return;
+    }
+
+    setIsCreatingOrder(true);
+    try {
+      const res = await fetch('/api/orders', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          customerName: newCustomerName.trim(),
+          customerPhone: newCustomerPhone.trim() || '7995597719',
+          address: newAddress.trim() || 'Counter Pickup (Gopuvanipalem)',
+          notes: newNotes.trim() || (newIsFunction ? 'Function Order' : null),
+          items: orderItemsList.map((item) => ({
+            variantId: item.variantId,
+            quantity: item.quantity,
+          })),
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to create order');
+
+      if (data.order) {
+        setOrders([data.order, ...orders]);
+      }
+      setIsCreateModalOpen(false);
+      setNewCustomerName('');
+      setNewCustomerPhone('');
+      setNewAddress('Shop Counter Pickup (Gopuvanipalem)');
+      setNewNotes('');
+      setNewIsFunction(false);
+      setOrderItemsList([]);
+    } catch (err: any) {
+      alert(err.message || 'Error creating order');
+    } finally {
+      setIsCreatingOrder(false);
+    }
+  };
+
+  const addVariantToOrder = (variantId: string) => {
+    // Find variant from availableProducts
+    for (const p of availableProducts) {
+      const v = p.variants?.find((item: any) => item.id === variantId);
+      if (v) {
+        const existing = orderItemsList.find((i) => i.variantId === variantId);
+        if (existing) {
+          setOrderItemsList(
+            orderItemsList.map((i) =>
+              i.variantId === variantId ? { ...i, quantity: i.quantity + 1 } : i
+            )
+          );
+        } else {
+          setOrderItemsList([
+            ...orderItemsList,
+            {
+              variantId: v.id,
+              productName: p.name,
+              packSize: v.packSize,
+              unitPrice: v.price,
+              quantity: 1,
+            },
+          ]);
+        }
+        return;
+      }
     }
   };
 
@@ -149,6 +293,13 @@ export default function OrderManager({
             Track daily milk orders, view live customer order locations, and dispatch turn-by-turn routes to delivery boys from Vani Milk Center.
           </p>
         </div>
+        <button
+          onClick={() => setIsCreateModalOpen(true)}
+          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-sky-600 hover:bg-sky-700 text-white font-bold text-xs shadow-sm transition-all active:scale-95 cursor-pointer shrink-0"
+        >
+          <Plus className="w-4 h-4" />
+          <span>+ Create Walk-in / Phone Order</span>
+        </button>
       </div>
 
       {/* Filter and Search Bar */}
@@ -316,9 +467,17 @@ export default function OrderManager({
                     </a>
 
                     <button
+                      onClick={() => openEditModal(order)}
+                      className="p-1.5 rounded-xl text-slate-400 hover:text-sky-600 hover:bg-sky-50 transition-colors cursor-pointer"
+                      title="Edit Customer Details & Order"
+                    >
+                      <Edit2 className="w-4 h-4" />
+                    </button>
+
+                    <button
                       onClick={() => handleDeleteOrder(order.id)}
                       disabled={deletingOrderId === order.id}
-                      className="p-1.5 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors disabled:opacity-50"
+                      className="p-1.5 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors disabled:opacity-50 cursor-pointer"
                       title="Delete Order"
                     >
                       {deletingOrderId === order.id ? (
@@ -551,6 +710,324 @@ export default function OrderManager({
                 </button>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Walk-in / Phone Order Creation Modal */}
+      {isCreateModalOpen && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm animate-in fade-in"
+        >
+          <div className="relative w-full max-w-xl bg-white rounded-3xl shadow-2xl border border-slate-200 overflow-hidden max-h-[90vh] flex flex-col">
+            <div className="p-5 bg-gradient-to-r from-sky-600 to-indigo-600 text-white flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <Plus className="w-5 h-5" />
+                <h3 className="font-extrabold text-base">New Walk-in / Telephone Order</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsCreateModalOpen(false)}
+                className="p-1.5 rounded-full hover:bg-white/10 text-slate-200 hover:text-white"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateWalkinOrder} className="p-6 space-y-4 overflow-y-auto flex-1">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
+                    Customer Name <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. Ramesh Naidu"
+                    value={newCustomerName}
+                    onChange={(e) => setNewCustomerName(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs font-semibold focus:ring-2 focus:ring-sky-500 outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
+                    Mobile Number <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type="tel"
+                    required
+                    placeholder="e.g. 9876543210"
+                    value={newCustomerPhone}
+                    onChange={(e) => setNewCustomerPhone(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs font-semibold focus:ring-2 focus:ring-sky-500 outline-none"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
+                  Delivery Address / Shop Counter <span className="text-rose-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Shop Counter Pickup or Customer Home Address"
+                  value={newAddress}
+                  onChange={(e) => setNewAddress(e.target.value)}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs font-semibold focus:ring-2 focus:ring-sky-500 outline-none"
+                />
+              </div>
+
+              <div className="flex items-center gap-2 pt-1">
+                <input
+                  type="checkbox"
+                  id="walkin-fn-order"
+                  checked={newIsFunction}
+                  onChange={(e) => setNewIsFunction(e.target.checked)}
+                  className="w-4 h-4 rounded text-sky-600 focus:ring-sky-500"
+                />
+                <label htmlFor="walkin-fn-order" className="text-xs font-bold text-slate-700 cursor-pointer">
+                  Special Function / Bulk Catering Order (Curd buckets, wedding feast, event)
+                </label>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
+                  Notes / Instructions
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. Deliver by 7:00 AM, Paid in Cash at Counter"
+                  value={newNotes}
+                  onChange={(e) => setNewNotes(e.target.value)}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs font-semibold focus:ring-2 focus:ring-sky-500 outline-none"
+                />
+              </div>
+
+              {/* Add Items to Order */}
+              <div className="pt-2 border-t border-slate-200">
+                <label className="block text-xs font-bold text-slate-800 uppercase mb-2">
+                  Select Products &amp; Pack Sizes
+                </label>
+                <div className="flex gap-2">
+                  <select
+                    id="product-variant-picker"
+                    defaultValue=""
+                    onChange={(e) => {
+                      if (e.target.value) {
+                        addVariantToOrder(e.target.value);
+                        e.target.value = '';
+                      }
+                    }}
+                    className="flex-1 px-3 py-2 rounded-xl border border-slate-300 text-xs font-semibold bg-slate-50 focus:ring-2 focus:ring-sky-500 outline-none"
+                  >
+                    <option value="" disabled>
+                      + Choose Product Variant to Add...
+                    </option>
+                    {availableProducts.map((p) =>
+                      p.variants?.map((v: any) => (
+                        <option key={v.id} value={v.id}>
+                          {p.name} — {v.packSize} (₹{v.price})
+                        </option>
+                      ))
+                    )}
+                  </select>
+                </div>
+
+                {/* Selected Items Table */}
+                {orderItemsList.length > 0 ? (
+                  <div className="mt-3 bg-slate-50 rounded-xl p-3 border border-slate-200 space-y-2">
+                    {orderItemsList.map((item, idx) => (
+                      <div key={item.variantId} className="flex items-center justify-between text-xs">
+                        <div>
+                          <span className="font-bold text-slate-800">{item.productName}</span>
+                          <span className="text-slate-500 ml-1">({item.packSize})</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="number"
+                            min="1"
+                            value={item.quantity}
+                            onChange={(e) => {
+                              const qty = parseInt(e.target.value, 10) || 1;
+                              setOrderItemsList(
+                                orderItemsList.map((it, i) => (i === idx ? { ...it, quantity: qty } : it))
+                              );
+                            }}
+                            className="w-14 px-2 py-1 rounded border border-slate-300 text-center font-bold text-xs"
+                          />
+                          <span className="font-bold text-sky-700 w-16 text-right">
+                            ₹{item.unitPrice * item.quantity}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setOrderItemsList(orderItemsList.filter((_, i) => i !== idx))
+                            }
+                            className="text-rose-500 hover:text-rose-700 font-bold ml-1"
+                          >
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                    <div className="pt-2 border-t border-slate-200 flex justify-between font-black text-sm text-slate-900">
+                      <span>Total:</span>
+                      <span className="text-sky-700">
+                        ₹
+                        {orderItemsList.reduce(
+                          (acc, curr) => acc + curr.unitPrice * curr.quantity,
+                          0
+                        )}
+                      </span>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-xs text-amber-700 bg-amber-50 p-2.5 rounded-xl border border-amber-200 mt-2">
+                    Please select at least one dairy item from the dropdown above to create the order.
+                  </p>
+                )}
+              </div>
+
+              <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setIsCreateModalOpen(false)}
+                  className="px-4 py-2.5 rounded-xl border border-slate-200 text-slate-600 text-xs font-bold hover:bg-slate-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isCreatingOrder || orderItemsList.length === 0}
+                  className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-sky-600 hover:bg-sky-700 text-white text-xs font-bold shadow transition-all disabled:opacity-50"
+                >
+                  {isCreatingOrder && <Loader2 className="w-4 h-4 animate-spin" />}
+                  <span>Save Order</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Order Modal */}
+      {editingOrder && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm animate-in fade-in"
+        >
+          <div className="relative w-full max-w-lg bg-white rounded-3xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col">
+            <div className="p-5 bg-gradient-to-r from-slate-900 to-sky-950 text-white flex items-center justify-between">
+              <div>
+                <h3 className="font-extrabold text-base">
+                  Edit Order #{editingOrder.id.slice(-6).toUpperCase()}
+                </h3>
+                <p className="text-xs text-slate-300">Update customer details, delivery location, and status</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setEditingOrder(null)}
+                className="p-1.5 rounded-full hover:bg-white/10 text-slate-200 hover:text-white"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveEditOrder} className="p-6 space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Customer Name</label>
+                  <input
+                    type="text"
+                    required
+                    value={editCustomerName}
+                    onChange={(e) => setEditCustomerName(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-semibold focus:ring-2 focus:ring-sky-500 outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Phone Number</label>
+                  <input
+                    type="tel"
+                    required
+                    value={editCustomerPhone}
+                    onChange={(e) => setEditCustomerPhone(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-semibold focus:ring-2 focus:ring-sky-500 outline-none"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Delivery Address</label>
+                <input
+                  type="text"
+                  required
+                  value={editAddress}
+                  onChange={(e) => setEditAddress(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-semibold focus:ring-2 focus:ring-sky-500 outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Order Status</label>
+                <select
+                  value={editStatus}
+                  onChange={(e) => setEditStatus(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-bold focus:ring-2 focus:ring-sky-500 outline-none"
+                >
+                  {STATUS_OPTIONS.map((st) => (
+                    <option key={st} value={st}>
+                      {st}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Notes / Instructions</label>
+                <input
+                  type="text"
+                  value={editNotes}
+                  onChange={(e) => setEditNotes(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-semibold focus:ring-2 focus:ring-sky-500 outline-none"
+                />
+              </div>
+
+              <div className="flex items-center gap-2 pt-1">
+                <input
+                  type="checkbox"
+                  id="edit-fn-order"
+                  checked={editIsFunction}
+                  onChange={(e) => setEditIsFunction(e.target.checked)}
+                  className="w-4 h-4 rounded text-sky-600 focus:ring-sky-500"
+                />
+                <label htmlFor="edit-fn-order" className="text-xs font-bold text-slate-700 cursor-pointer">
+                  Mark as Function / Bulk Catering Order
+                </label>
+              </div>
+
+              <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setEditingOrder(null)}
+                  className="px-4 py-2 rounded-xl border border-slate-200 text-slate-600 text-xs font-bold hover:bg-slate-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSavingEdit}
+                  className="inline-flex items-center gap-2 px-6 py-2 rounded-xl bg-sky-600 hover:bg-sky-700 text-white text-xs font-bold shadow transition-all disabled:opacity-50"
+                >
+                  {isSavingEdit && <Loader2 className="w-4 h-4 animate-spin" />}
+                  <span>Save Changes</span>
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
