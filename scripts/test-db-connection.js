@@ -3,7 +3,7 @@ require('dotenv').config();
 
 async function checkDatabaseConnection() {
   console.log('======================================================');
-  console.log('  VANI MILK CENTER — POSTGRESQL CONNECTION TEST');
+  console.log('  VANI MILK CENTER — DATABASE CONNECTION TEST');
   console.log('======================================================\n');
 
   const dbUrl = process.env.DATABASE_URL || '';
@@ -24,14 +24,14 @@ async function checkDatabaseConnection() {
     console.log('👉 Please replace the placeholder with your actual PostgreSQL database password.\n');
   }
 
-  console.log('⏳ Attempting connection to PostgreSQL...');
+  console.log('⏳ Attempting database connection...');
   const prisma = new PrismaClient({
     log: ['error'],
   });
 
   try {
     const result = await prisma.$queryRawUnsafe('SELECT 1 as connected');
-    console.log('✅ SUCCESS: Successfully connected to PostgreSQL database!');
+    console.log('✅ SUCCESS: Successfully connected to database!');
     console.log('   Connection verified: Database is alive and accepting queries.\n');
 
     // Check tables

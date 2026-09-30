@@ -23,6 +23,15 @@ export function getDatabaseInfo() {
   const url = process.env.DATABASE_URL || '';
   const isConfigured = isDatabaseConfigured();
   
+  if (url.startsWith('file:')) {
+    return {
+      provider: 'Project Database (SQLite)',
+      isConfigured,
+      host: 'Local Project File (prisma/dev.db)',
+      database: 'vani_milk_center',
+    };
+  }
+
   let host = 'localhost:5432';
   let database = 'vani_milk_center';
 

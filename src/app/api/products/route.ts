@@ -40,10 +40,10 @@ export async function GET(request: Request) {
     if (search && search.trim()) {
       const query = search.trim();
       whereClause.OR = [
-        { name: { contains: query, mode: 'insensitive' } },
-        { description: { contains: query, mode: 'insensitive' } },
-        { quality: { contains: query, mode: 'insensitive' } },
-        { variants: { some: { packSize: { contains: query, mode: 'insensitive' } } } },
+        { name: { contains: query } },
+        { description: { contains: query } },
+        { quality: { contains: query } },
+        { variants: { some: { packSize: { contains: query } } } },
       ];
     }
 
