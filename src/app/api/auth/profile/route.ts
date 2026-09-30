@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
 import { prisma, isDatabaseConfigured } from '@/lib/db';
 import { getCurrentAdmin, signToken, AUTH_COOKIE_NAME } from '@/lib/auth';
+import { alertAdminProfileUpdated } from '@/lib/email';
 
 export const dynamic = 'force-dynamic';
 
@@ -113,6 +114,13 @@ export async function PUT(request: Request) {
       where: { id: user.id },
       data: updateData,
     });
+
+    // Alert shop owner of admin credential changes
+    alertAdminProfileUpdated({
+      adminName: updatedUser.name,
+      adminEmail: updatedUser.email,
+      passwordChanged: Boolean(newPassword && newPassword.trim()),
+    }).catch((e) => console.warn('Admin profile alert error:', e));
 
     // Refresh auth cookie with updated user info
     const newToken = signToken({

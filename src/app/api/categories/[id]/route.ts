@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma, isDatabaseConfigured } from '@/lib/db';
 import { getCurrentAdmin } from '@/lib/auth';
+import { alertCategoryUpdated } from '@/lib/email';
 
 export const dynamic = 'force-dynamic';
 
@@ -33,6 +34,15 @@ export async function PUT(
       where: { id },
       data,
     });
+
+    // Alert shop owner
+    alertCategoryUpdated({
+      action: 'UPDATED',
+      categoryName: category.name,
+      slug: category.slug,
+      adminName: admin.name,
+      adminEmail: admin.email,
+    }).catch((e) => console.warn('Category update alert error:', e));
 
     return NextResponse.json({ success: true, category });
   } catch (error: any) {
@@ -69,9 +79,23 @@ export async function DELETE(
       );
     }
 
+    const category = await prisma.category.findUnique({
+      where: { id },
+    });
+
     await prisma.category.delete({
       where: { id },
     });
+
+    if (category) {
+      alertCategoryUpdated({
+        action: 'DELETED',
+        categoryName: category.name,
+        slug: category.slug,
+        adminName: admin.name,
+        adminEmail: admin.email,
+      }).catch((e) => console.warn('Category delete alert error:', e));
+    }
 
     return NextResponse.json({ success: true, message: 'Category deleted successfully' });
   } catch (error: any) {

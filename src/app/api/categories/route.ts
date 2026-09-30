@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma, isDatabaseConfigured } from '@/lib/db';
 import { getCurrentAdmin } from '@/lib/auth';
 import { DEFAULT_CATEGORIES } from '@/lib/catalog';
+import { alertCategoryUpdated } from '@/lib/email';
 
 export const dynamic = 'force-dynamic';
 
@@ -75,6 +76,15 @@ export async function POST(request: Request) {
         displayOrder: parseInt(displayOrder, 10) || 0,
       },
     });
+
+    // Alert shop owner asynchronously
+    alertCategoryUpdated({
+      action: 'CREATED',
+      categoryName: category.name,
+      slug: category.slug,
+      adminName: admin.name,
+      adminEmail: admin.email,
+    }).catch((e) => console.warn('Owner alert category error:', e));
 
     return NextResponse.json({ success: true, category }, { status: 201 });
   } catch (error: any) {

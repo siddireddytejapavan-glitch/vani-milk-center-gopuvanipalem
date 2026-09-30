@@ -19,18 +19,13 @@ async function checkDatabaseConnection() {
   console.log(`   ${maskedUrl}\n`);
 
   if (dbUrl.includes('[YOUR-PASSWORD]') || dbUrl.includes('YOUR-PASSWORD')) {
-    console.warn('⚠️  ATTENTION: DATABASE_URL still contains the "[YOUR-PASSWORD]" placeholder.');
-    console.log('👉 Please replace [YOUR-PASSWORD] in .env with your actual Supabase database password.\n');
+    console.warn('⚠️  ATTENTION: DATABASE_URL contains "[YOUR-PASSWORD]".');
+    console.log('👉 Please replace [YOUR-PASSWORD] in .env or .env.local with your actual Supabase database password.');
+    console.log('   (Found in your Supabase project dashboard -> Project Settings -> Database)\n');
   }
 
-  if (dbUrl.includes('postgres.scgsknoptivsuphzxzoz')) {
-    console.warn('⚠️  NOTICE: "scgsknoptivsuphzxzoz" is your Supabase ORGANIZATION address.');
-    console.log('   In Supabase, your database project has its own Project Reference ID.');
-    console.log('👉 To find your project connection string:');
-    console.log('   1. Open: https://supabase.com/dashboard/org/scgsknoptivsuphzxzoz');
-    console.log('   2. Click on your Project (or click "New Project" if not created yet).');
-    console.log('   3. Go to Project Settings (gear icon) -> Database -> Connection string (URI).');
-    console.log('   4. Copy the URI and paste it into your .env file.\n');
+  if (dbUrl.includes('saeeiphkhzpbujbmmiux')) {
+    console.log('✅ Supabase Project Reference identified: saeeiphkhzpbujbmmiux (Region: ap-southeast-1)');
   }
 
   console.log('⏳ Attempting connection to PostgreSQL...');

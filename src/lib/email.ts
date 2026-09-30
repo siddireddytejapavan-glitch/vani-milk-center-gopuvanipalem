@@ -250,3 +250,66 @@ export async function alertShopSettingsUpdated({
     adminEmail,
   });
 }
+
+/**
+ * Alert for category additions, edits, and deletions
+ */
+export async function alertCategoryUpdated({
+  action,
+  categoryName,
+  slug,
+  adminName,
+  adminEmail,
+}: {
+  action: 'CREATED' | 'UPDATED' | 'DELETED';
+  categoryName: string;
+  slug?: string;
+  adminName?: string;
+  adminEmail?: string;
+}) {
+  const detailsHtml = `
+    <p>Category <strong>"${categoryName}"</strong> (${slug || 'default'}) was <strong>${action}</strong> in your store catalog.</p>
+  `;
+
+  return sendOwnerAlertEmail({
+    subject: `🔔 [Vani Milk Center] Category ${action}: ${categoryName}`,
+    title: `Category ${action}: ${categoryName}`,
+    actionType: 'CATEGORY_UPDATE',
+    detailsHtml,
+    adminName,
+    adminEmail,
+  });
+}
+
+/**
+ * Alert for admin profile or password changes
+ */
+export async function alertAdminProfileUpdated({
+  adminName,
+  adminEmail,
+  passwordChanged,
+}: {
+  adminName: string;
+  adminEmail: string;
+  passwordChanged: boolean;
+}) {
+  const detailsHtml = `
+    <p>Administrative account details were modified:</p>
+    <ul>
+      <li><strong>Admin Name:</strong> ${adminName}</li>
+      <li><strong>Admin Email:</strong> ${adminEmail}</li>
+      <li><strong>Password Changed:</strong> ${passwordChanged ? 'Yes (Security Alert: Password was updated)' : 'No (Name/Email only)'}</li>
+    </ul>
+    <p style="color: #b91c1c; font-weight: 600;">If you did not perform this change, please contact the administrator immediately.</p>
+  `;
+
+  return sendOwnerAlertEmail({
+    subject: `🔒 [Vani Milk Center Security Alert] Admin Credentials / Profile Updated`,
+    title: `Security Alert: Admin Profile Updated`,
+    actionType: 'SHOP_DETAILS_UPDATE',
+    detailsHtml,
+    adminName,
+    adminEmail,
+  });
+}
+

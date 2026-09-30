@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
+import { updateSession } from '@/utils/supabase/middleware';
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -19,7 +20,8 @@ export function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL('/admin', request.url));
   }
 
-  return NextResponse.next();
+  const { supabaseResponse } = updateSession(request);
+  return supabaseResponse;
 }
 
 export const config = {
