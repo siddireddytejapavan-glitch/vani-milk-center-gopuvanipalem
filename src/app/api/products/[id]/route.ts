@@ -98,7 +98,7 @@ export async function PUT(
           where: {
             OR: [
               { slug: normalizedSlug },
-              { name: { contains: normalizedSlug } },
+              { name: { contains: normalizedSlug, mode: 'insensitive' } },
               { slug: categoryId.toLowerCase() },
             ],
           },

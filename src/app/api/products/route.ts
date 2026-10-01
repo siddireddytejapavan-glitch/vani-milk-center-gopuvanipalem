@@ -40,10 +40,10 @@ export async function GET(request: Request) {
     if (search && search.trim()) {
       const query = search.trim();
       whereClause.OR = [
-        { name: { contains: query } },
-        { description: { contains: query } },
-        { quality: { contains: query } },
-        { variants: { some: { packSize: { contains: query } } } },
+        { name: { contains: query, mode: 'insensitive' } },
+        { description: { contains: query, mode: 'insensitive' } },
+        { quality: { contains: query, mode: 'insensitive' } },
+        { variants: { some: { packSize: { contains: query, mode: 'insensitive' } } } },
       ];
     }
 
@@ -128,7 +128,7 @@ export async function POST(request: Request) {
         where: {
           OR: [
             { slug: normalizedSlug },
-            { name: { contains: normalizedSlug } },
+            { name: { contains: normalizedSlug, mode: 'insensitive' } },
             { slug: categoryId.toLowerCase() },
           ],
         },

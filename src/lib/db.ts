@@ -8,7 +8,6 @@ export function isDatabaseConfigured(): boolean {
 
   // Verify it is a postgres URL and not an unpopulated placeholder
   const isPostgres = trimmed.startsWith('postgresql://') || trimmed.startsWith('postgres://');
-  const isSqlite = trimmed.startsWith('file:');
   const hasPlaceholder =
     trimmed.includes('[YOUR-PASSWORD]') ||
     trimmed.includes('[YOUR_PASSWORD]') ||
@@ -16,33 +15,25 @@ export function isDatabaseConfigured(): boolean {
     trimmed.includes('YOUR-PASSWORD') ||
     trimmed.includes('your_password');
 
-  return (isPostgres || isSqlite) && !hasPlaceholder;
+  return isPostgres && !hasPlaceholder;
 }
+
 
 export function getDatabaseInfo() {
   const url = process.env.DATABASE_URL || '';
   const isConfigured = isDatabaseConfigured();
-  
-  if (url.startsWith('file:')) {
-    return {
-      provider: 'Project Database (SQLite)',
-      isConfigured,
-      host: 'Local Project File (prisma/dev.db)',
-      database: 'vani_milk_center',
-    };
-  }
 
-  let host = 'localhost:5432';
-  let database = 'vani_milk_center';
+  let host = 'aws-0-us-west-1.pooler.supabase.com:6543';
+  let database = 'postgres';
 
   try {
     if (url.includes('@')) {
       const parts = url.split('@')[1];
       if (parts) {
-        host = parts.split('/')[0] || 'localhost:5432';
+        host = parts.split('/')[0] || host;
         const dbPart = parts.split('/')[1];
         if (dbPart) {
-          database = dbPart.split('?')[0] || 'vani_milk_center';
+          database = dbPart.split('?')[0] || database;
         }
       }
     }
@@ -51,12 +42,13 @@ export function getDatabaseInfo() {
   }
 
   return {
-    provider: 'PostgreSQL',
+    provider: 'Supabase PostgreSQL',
     isConfigured,
     host,
     database,
   };
 }
+
 
 const globalForPrisma = global as unknown as { prisma: PrismaClient };
 
