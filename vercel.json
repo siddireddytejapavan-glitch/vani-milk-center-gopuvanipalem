@@ -1,21 +1,5 @@
 {
   "buildCommand": "prisma generate && next build",
   "framework": "nextjs",
-  "regions": ["bom1"],
-  "env": {
-    "DATABASE_URL": "@database_url",
-    "DIRECT_URL": "@direct_url",
-    "JWT_SECRET": "@jwt_secret",
-    "ADMIN_EMAIL": "@admin_email",
-    "ADMIN_PASSWORD": "@admin_password",
-    "OWNER_ALERT_EMAIL": "@owner_alert_email",
-    "SECONDARY_OWNER_ALERT_EMAIL": "@secondary_owner_alert_email",
-    "SHOP_WHATSAPP_NUMBER": "@shop_whatsapp_number",
-    "SUPABASE_URL": "@supabase_url",
-    "SUPABASE_PUBLISHABLE_KEY": "@supabase_publishable_key",
-    "SUPABASE_SECRET_KEY": "@supabase_secret_key",
-    "NEXT_PUBLIC_SUPABASE_URL": "@next_public_supabase_url",
-    "NEXT_PUBLIC_SUPABASE_ANON_KEY": "@next_public_supabase_anon_key",
-    "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY": "@next_public_supabase_publishable_key"
-  }
+  "regions": ["bom1"]
 }
