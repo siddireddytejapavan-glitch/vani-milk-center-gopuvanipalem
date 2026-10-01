@@ -5,9 +5,14 @@ out/
 # Node modules
 node_modules/
 
-# Environment variables
+# Environment variables - secrets only (not .env.example)
 .env
-.env*.local
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.env.development
+.env.production
 
 # Database
 prisma/*.db
@@ -31,3 +36,6 @@ public/images/products/pics/
 
 # Excel scratch files
 *.xlsx
+
+# Vercel local config folder (NOT vercel.json)
+.vercel
