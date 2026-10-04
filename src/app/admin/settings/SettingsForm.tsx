@@ -36,6 +36,8 @@ interface SettingsData {
   logoUrl: string;
   aboutDescription: string;
   bannerText: string;
+  shopLat?: number | null;
+  shopLng?: number | null;
 }
 
 export default function SettingsForm({
@@ -68,6 +70,34 @@ export default function SettingsForm({
   const [bannerText, setBannerText] = useState(
     initialSettings.bannerText || ''
   );
+
+  // Shop GPS coordinates (live location of the shop)
+  const [shopLat, setShopLat] = useState<number | string>(initialSettings.shopLat ?? 16.4307);
+  const [shopLng, setShopLng] = useState<number | string>(initialSettings.shopLng ?? 81.1167);
+  const [isDetectingShopGps, setIsDetectingShopGps] = useState(false);
+  const [shopGpsStatus, setShopGpsStatus] = useState<string | null>(null);
+
+  const handleDetectShopLocation = () => {
+    if (!navigator.geolocation) {
+      setShopGpsStatus('Geolocation not supported by your browser.');
+      return;
+    }
+    setIsDetectingShopGps(true);
+    setShopGpsStatus('Detecting shop live GPS coordinates...');
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setShopLat(pos.coords.latitude);
+        setShopLng(pos.coords.longitude);
+        setIsDetectingShopGps(false);
+        setShopGpsStatus(`✅ Shop GPS captured: ${pos.coords.latitude.toFixed(6)}, ${pos.coords.longitude.toFixed(6)} (±${Math.round(pos.coords.accuracy)}m)`);
+      },
+      (err) => {
+        setIsDetectingShopGps(false);
+        setShopGpsStatus(`GPS error: ${err.message || 'Permission denied or unavailable'}`);
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+    );
+  };
 
   const [isSaving, setIsSaving] = useState(false);
   const [uploadingLogo, setUploadingLogo] = useState(false);
@@ -221,6 +251,8 @@ export default function SettingsForm({
           logoUrl,
           aboutDescription,
           bannerText,
+          shopLat: parseFloat(String(shopLat)) || 16.4307,
+          shopLng: parseFloat(String(shopLng)) || 81.1167,
         }),
       });
 
@@ -579,6 +611,78 @@ export default function SettingsForm({
               placeholder="e.g. 659J+CX2 Vani milk, Gopuvanipalem, Andhra Pradesh 521002"
               className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-sky-500 resize-none"
             />
+          </div>
+
+          {/* Shop Live GPS Coordinates */}
+          <div className="p-4 rounded-2xl bg-sky-50 border border-sky-200 space-y-3">
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <div>
+                <p className="text-xs font-extrabold text-sky-800 flex items-center gap-1.5">
+                  <Navigation className="w-3.5 h-3.5 text-sky-600" />
+                  Shop Live GPS Coordinates
+                </p>
+                <p className="text-[11px] text-sky-600 mt-0.5">
+                  Used for delivery charge calculation and delivery boy navigation route.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={handleDetectShopLocation}
+                disabled={isDetectingShopGps}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-sky-600 hover:bg-sky-700 text-white text-xs font-bold transition-all active:scale-95 disabled:opacity-50 cursor-pointer"
+              >
+                {isDetectingShopGps ? (
+                  <><Loader2 className="w-3.5 h-3.5 animate-spin" /><span>Detecting...</span></>
+                ) : (
+                  <><Navigation className="w-3.5 h-3.5" /><span>📍 Detect Shop Live Location</span></>
+                )}
+              </button>
+            </div>
+
+            {shopGpsStatus && (
+              <p className={`text-[11px] font-medium px-2 py-1.5 rounded-lg ${
+                shopGpsStatus.startsWith('✅') ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'
+              }`}>
+                {shopGpsStatus}
+              </p>
+            )}
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-[11px] font-bold text-sky-700 mb-1 uppercase">Shop Latitude</label>
+                <input
+                  type="number"
+                  step="0.000001"
+                  value={shopLat}
+                  onChange={(e) => setShopLat(e.target.value)}
+                  placeholder="16.430700"
+                  className="w-full px-3 py-2 rounded-xl border border-sky-200 bg-white text-xs font-mono text-slate-800 focus:outline-none focus:ring-2 focus:ring-sky-500"
+                />
+              </div>
+              <div>
+                <label className="block text-[11px] font-bold text-sky-700 mb-1 uppercase">Shop Longitude</label>
+                <input
+                  type="number"
+                  step="0.000001"
+                  value={shopLng}
+                  onChange={(e) => setShopLng(e.target.value)}
+                  placeholder="81.116700"
+                  className="w-full px-3 py-2 rounded-xl border border-sky-200 bg-white text-xs font-mono text-slate-800 focus:outline-none focus:ring-2 focus:ring-sky-500"
+                />
+              </div>
+            </div>
+
+            {shopLat && shopLng && (
+              <a
+                href={`https://maps.google.com/?q=${shopLat},${shopLng}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 text-[11px] font-bold text-sky-700 hover:underline"
+              >
+                <ExternalLink className="w-3 h-3" />
+                Preview Shop Location on Google Maps
+              </a>
+            )}
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">

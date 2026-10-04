@@ -21,6 +21,7 @@ export interface OrderWhatsAppDetails {
   longitude?: number | null;
   liveLocationUrl?: string | null;
   deliveryRouteUrl?: string | null;
+  trackingUrl?: string | null;
 }
 
 export function cleanWhatsAppNumber(num: string): string {
@@ -48,12 +49,19 @@ export function generateLiveLocationMapUrl(lat: number, lng: number): string {
 export function generateDeliveryRouteUrl(
   destinationAddress: string,
   lat?: number | null,
-  lng?: number | null
+  lng?: number | null,
+  shopLat?: number | null,
+  shopLng?: number | null
 ): string {
+  const origin =
+    typeof shopLat === 'number' && typeof shopLng === 'number' && !isNaN(shopLat) && !isNaN(shopLng)
+      ? `${shopLat},${shopLng}`
+      : SHOP_ORIGIN_QUERY;
+
   if (typeof lat === 'number' && typeof lng === 'number' && !isNaN(lat) && !isNaN(lng)) {
-    return `https://www.google.com/maps/dir/?api=1&origin=${SHOP_ORIGIN_QUERY}&destination=${lat},${lng}`;
+    return `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${lat},${lng}`;
   }
-  return `https://www.google.com/maps/dir/?api=1&origin=${SHOP_ORIGIN_QUERY}&destination=${encodeURIComponent(
+  return `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${encodeURIComponent(
     destinationAddress || 'Gopuvanipalem'
   )}`;
 }
@@ -170,6 +178,10 @@ export function generateOrderWhatsAppMessage(details: OrderWhatsAppDetails): str
 
   if (details.notes && details.notes.trim()) {
     msg += `\n*Special Instructions:*\n${details.notes.trim()}\n`;
+  }
+
+  if (details.trackingUrl) {
+    msg += `\n📍 *Live Order & Delivery Tracking Link:*\n${details.trackingUrl}\n`;
   }
 
   msg += `\nThank you for choosing our fresh dairy shop!`;

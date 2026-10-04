@@ -68,6 +68,14 @@ model Order {
   address         String
   notes           String?
   totalAmount     Float
+  deliveryCharge  Float       @default(0)
+  customerLat     Float?
+  customerLng     Float?
+  shopLat         Float?
+  shopLng         Float?
+  deliveryLat     Float?
+  deliveryLng     Float?
+  deliveryUpdatedAt DateTime?
   status          String      @default("Pending") // Pending, Confirmed, Preparing, Ready, Delivered, Cancelled
   isFunctionOrder Boolean     @default(false)
   items           OrderItem[]
@@ -106,5 +114,7 @@ model ShopSettings {
   logoUrl          String   @default("/images/shop-logo.svg")
   aboutDescription String   @default("Welcome to Vani Milk Center, Gopivanipalem. We provide 100% pure & natural, hygienically processed milk, curd, ghee, paneer, buttermilk, and lassi for daily families, functions, and bulk catering orders.")
   bannerText       String   @default("100% Pure & Natural Milk Products | Healthy Life Happy Life | Home Delivery: 7995597719")
+  shopLat          Float    @default(16.4307)  // Gopuvanipalem default lat
+  shopLng          Float    @default(81.1167)  // Gopuvanipalem default lng
   updatedAt        DateTime @updatedAt
 }

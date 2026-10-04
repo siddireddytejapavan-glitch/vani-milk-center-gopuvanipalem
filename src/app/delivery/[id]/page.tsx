@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
@@ -17,9 +17,13 @@ import {
   Send,
   User,
   ShoppingBag,
+  Truck,
+  RefreshCw,
+  ExternalLink,
 } from 'lucide-react';
 import { formatINR } from '@/lib/utils';
 import { generateDeliveryRouteUrl } from '@/lib/whatsapp';
+import { haversineDistanceKm, calculateDeliveryCharge, FREE_DELIVERY_KM, RATE_PER_KM } from '@/lib/delivery';
 
 export default function DeliverySubmissionPage() {
   const params = useParams();
@@ -36,6 +40,20 @@ export default function DeliverySubmissionPage() {
     ownerWhatsAppUrl: string;
     ownerNotificationMessage: string;
   } | null>(null);
+
+  // Delivery boy live GPS tracking
+  const [boyLocation, setBoyLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const [isTrackingGPS, setIsTrackingGPS] = useState(false);
+  const [gpsError, setGpsError] = useState<string | null>(null);
+  const watchIdRef = useRef<number | null>(null);
+
+  // Computed distance from delivery boy's current location → customer location
+  const [liveDistanceKm, setLiveDistanceKm] = useState<number | null>(null);
+  const [liveDeliveryCharge, setLiveDeliveryCharge] = useState<number | null>(null);
+
+  // Live map iframe key — changes when boy location updates to refresh embed
+  const [mapRefreshKey, setMapRefreshKey] = useState(0);
+  const mapRefreshTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     if (!orderId) return;
@@ -62,6 +80,103 @@ export default function DeliverySubmissionPage() {
     };
     fetchOrder();
   }, [orderId]);
+
+  // Recalculate live distance to customer whenever boy's position or order customer coords change
+  useEffect(() => {
+    if (!boyLocation || !order) return;
+
+    // Use customer GPS coords from order if available; otherwise skip
+    const customerLat = order.customerLat ?? null;
+    const customerLng = order.customerLng ?? null;
+
+    if (customerLat !== null && customerLng !== null) {
+      const dist = haversineDistanceKm(boyLocation.lat, boyLocation.lng, customerLat, customerLng);
+      setLiveDistanceKm(dist);
+      setLiveDeliveryCharge(calculateDeliveryCharge(dist));
+    }
+  }, [boyLocation, order]);
+
+  const lastSyncTimeRef = useRef<number>(0);
+  const syncLocationToServer = async (lat: number, lng: number) => {
+    const now = Date.now();
+    // throttle to every 3 seconds to avoid unnecessary requests
+    if (now - lastSyncTimeRef.current < 3000) return;
+    lastSyncTimeRef.current = now;
+
+    try {
+      await fetch(`/api/delivery/${orderId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          deliveryLat: lat,
+          deliveryLng: lng,
+          status: 'Out for Delivery',
+        }),
+      });
+    } catch (err) {
+      console.warn('Failed to sync live delivery GPS to server:', err);
+    }
+  };
+
+  const startGPSTracking = () => {
+    if (!navigator.geolocation) {
+      setGpsError('Geolocation not supported by this browser.');
+      return;
+    }
+    setIsTrackingGPS(true);
+    setGpsError(null);
+
+    // Initial immediate location fetch
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const lat = pos.coords.latitude;
+        const lng = pos.coords.longitude;
+        setBoyLocation({ lat, lng });
+        setMapRefreshKey((k) => k + 1);
+        syncLocationToServer(lat, lng);
+      },
+      (err) => console.warn('Initial GPS fetch error:', err),
+      { enableHighAccuracy: true, timeout: 8000, maximumAge: 0 }
+    );
+
+    watchIdRef.current = navigator.geolocation.watchPosition(
+      (pos) => {
+        const lat = pos.coords.latitude;
+        const lng = pos.coords.longitude;
+        setBoyLocation({ lat, lng });
+        // Refresh the live map embed every location update (throttle with key)
+        setMapRefreshKey((k) => k + 1);
+        syncLocationToServer(lat, lng);
+      },
+      (err) => {
+        setGpsError('GPS error: ' + (err.message || 'Unknown error'));
+        setIsTrackingGPS(false);
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 4000 }
+    );
+  };
+
+  const stopGPSTracking = () => {
+    if (watchIdRef.current !== null) {
+      navigator.geolocation.clearWatch(watchIdRef.current);
+      watchIdRef.current = null;
+    }
+    if (mapRefreshTimerRef.current) {
+      clearInterval(mapRefreshTimerRef.current);
+    }
+    setIsTrackingGPS(false);
+  };
+
+  useEffect(() => {
+    return () => {
+      if (watchIdRef.current !== null) {
+        navigator.geolocation.clearWatch(watchIdRef.current);
+      }
+      if (mapRefreshTimerRef.current) {
+        clearInterval(mapRefreshTimerRef.current);
+      }
+    };
+  }, []);
 
   const handleMarkDelivered = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -106,8 +221,41 @@ export default function DeliverySubmissionPage() {
   };
 
   const destinationAddress = order?.address || 'Gopuvanipalem';
-  const routeUrl = generateDeliveryRouteUrl(destinationAddress);
+  const customerLat = order?.customerLat ?? null;
+  const customerLng = order?.customerLng ?? null;
+  const shopLat = order?.shopLat ?? 16.4307;
+  const shopLng = order?.shopLng ?? 81.1167;
+
+  // Route: from delivery boy's current location (or shop) to customer
+  const routeUrl = boyLocation
+    ? `https://www.google.com/maps/dir/?api=1&origin=${boyLocation.lat},${boyLocation.lng}&destination=${customerLat !== null ? `${customerLat},${customerLng}` : encodeURIComponent(destinationAddress)}`
+    : generateDeliveryRouteUrl(destinationAddress, customerLat, customerLng);
+
   const customerPhoneClean = order?.customerPhone?.replace(/\D/g, '') || '';
+
+  // Shop→Customer distance at order time
+  const orderDistanceKm =
+    order?.deliveryCharge !== undefined && order?.customerLat !== null
+      ? haversineDistanceKm(shopLat, shopLng, order.customerLat ?? shopLat, order.customerLng ?? shopLng)
+      : null;
+  const orderDeliveryCharge = order?.deliveryCharge ?? null;
+
+  // Live embed map URL — shows delivery boy's current position
+  const liveMapEmbedUrl = boyLocation
+    ? `https://maps.google.com/maps?q=${boyLocation.lat},${boyLocation.lng}&z=15&output=embed`
+    : customerLat !== null
+    ? `https://maps.google.com/maps?q=${customerLat},${customerLng}&z=14&output=embed`
+    : `https://maps.google.com/maps?q=${shopLat},${shopLng}&z=14&output=embed`;
+
+  // WhatsApp share: send delivery boy live location to customer
+  const shareMyLocationUrl = boyLocation
+    ? (() => {
+        const origin = typeof window !== 'undefined' ? window.location.origin : '';
+        const trackUrl = origin ? `${origin}/track/${orderId}` : '';
+        const msg = `🛵 *Vani Milk Center – Delivery Update*\n\nYour order is on the way!\n📍 *Delivery Boy Live Location:* https://maps.google.com/?q=${boyLocation.lat},${boyLocation.lng}\n\n${liveDistanceKm !== null ? `📏 Remaining distance: ${liveDistanceKm.toFixed(2)} km\n` : ''}${trackUrl ? `\n🔍 *Live Order & Map Tracking:* ${trackUrl}\n` : ''}\n*Track your delivery in real time!*`;
+        return `https://wa.me/${customerPhoneClean}?text=${encodeURIComponent(msg)}`;
+      })()
+    : null;
 
   return (
     <div className="min-h-screen bg-slate-900 text-slate-100 flex flex-col justify-between p-4 sm:p-6 lg:p-8">
@@ -134,6 +282,121 @@ export default function DeliverySubmissionPage() {
             <ArrowLeft className="w-3.5 h-3.5" />
             <span>Store</span>
           </Link>
+        </div>
+
+        {/* Live GPS Tracking Panel */}
+        <div className="bg-slate-800/90 backdrop-blur-md rounded-3xl border border-slate-700 shadow-xl p-5 space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              {isTrackingGPS && <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />}
+              <span className="text-sm font-bold text-white">
+                {isTrackingGPS ? '📡 Live GPS Tracking Active' : '📍 Delivery Boy GPS'}
+              </span>
+            </div>
+            {isTrackingGPS ? (
+              <button
+                onClick={stopGPSTracking}
+                className="px-3 py-1.5 rounded-xl bg-rose-600/80 hover:bg-rose-700 text-white text-xs font-bold transition-all active:scale-95 cursor-pointer"
+              >
+                Stop Tracking
+              </button>
+            ) : (
+              <button
+                onClick={startGPSTracking}
+                className="px-3 py-1.5 rounded-xl bg-sky-600 hover:bg-sky-700 text-white text-xs font-bold transition-all active:scale-95 cursor-pointer"
+              >
+                Start My GPS
+              </button>
+            )}
+          </div>
+
+          {gpsError && (
+            <p className="text-xs text-rose-400 font-medium">{gpsError}</p>
+          )}
+
+          {boyLocation ? (
+            <div className="space-y-2">
+              <div className="flex gap-2">
+                <div className="flex-1 bg-slate-700/60 rounded-xl p-3 text-xs">
+                  <span className="text-slate-400 block mb-0.5">My Location (Delivery Boy)</span>
+                  <a
+                    href={`https://maps.google.com/?q=${boyLocation.lat},${boyLocation.lng}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="font-mono text-sky-400 hover:underline font-bold"
+                  >
+                    {boyLocation.lat.toFixed(5)}, {boyLocation.lng.toFixed(5)}
+                  </a>
+                </div>
+                {customerLat !== null && (
+                  <div className="flex-1 bg-slate-700/60 rounded-xl p-3 text-xs">
+                    <span className="text-slate-400 block mb-0.5">Customer GPS Pin</span>
+                    <a
+                      href={`https://maps.google.com/?q=${customerLat},${customerLng}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="font-mono text-emerald-400 hover:underline font-bold"
+                    >
+                      {customerLat.toFixed(5)}, {customerLng?.toFixed(5)}
+                    </a>
+                  </div>
+                )}
+              </div>
+
+              {/* Live Distance from Delivery Boy to Customer */}
+              {liveDistanceKm !== null && (
+                <div className={`rounded-xl p-3 text-xs flex items-center justify-between border ${liveDeliveryCharge === 0 ? 'bg-emerald-900/40 border-emerald-700' : 'bg-amber-900/40 border-amber-700'}`}>
+                  <div>
+                    <span className="text-slate-400 block">Remaining Distance to Customer:</span>
+                    <span className="font-black text-white text-base">{liveDistanceKm.toFixed(2)} km</span>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-slate-400 block">Order Delivery Charge:</span>
+                    <span className={`font-black text-base ${orderDeliveryCharge === 0 ? 'text-emerald-400' : 'text-amber-400'}`}>
+                      {orderDeliveryCharge !== null
+                        ? orderDeliveryCharge === 0 ? '🎁 FREE' : formatINR(orderDeliveryCharge)
+                        : '—'}
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              {/* Live Embed Map — shows delivery boy's current position */}
+              <div className="relative w-full h-48 rounded-2xl overflow-hidden border border-slate-600 shadow-inner bg-slate-700">
+                <div className="absolute top-2 left-2 z-10 bg-slate-900/80 backdrop-blur-sm text-emerald-400 text-[10px] font-bold px-2 py-1 rounded-lg flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                  Live Position
+                </div>
+                <iframe
+                  key={mapRefreshKey}
+                  title="Delivery Boy Live Map"
+                  src={liveMapEmbedUrl}
+                  width="100%"
+                  height="100%"
+                  className="w-full h-full border-0"
+                  loading="lazy"
+                  allowFullScreen
+                />
+              </div>
+
+              {/* Share Live Location to Customer via WhatsApp */}
+              {shareMyLocationUrl && (
+                <a
+                  href={shareMyLocationUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-emerald-700/60 hover:bg-emerald-700 text-white font-bold text-xs border border-emerald-600 transition-all active:scale-95"
+                >
+                  <MessageCircle className="w-4 h-4 fill-white" />
+                  <span>📡 Share My Live Location to Customer via WhatsApp</span>
+                </a>
+              )}
+            </div>
+          ) : (
+            <p className="text-xs text-slate-400">
+              Tap &quot;Start My GPS&quot; to track your live location while on delivery. This helps you navigate to the customer and track distance.
+            </p>
+          )}
         </div>
 
         {/* Order Details & Delivery Action Card */}
@@ -184,20 +447,72 @@ export default function DeliverySubmissionPage() {
                   </span>
                 </div>
               )}
-              {order?.totalAmount !== undefined && (
-                <div className="flex items-center justify-between text-sm pt-2 border-t border-slate-200">
+              {/* Customer GPS Pin */}
+              {customerLat !== null && (
+                <div className="flex items-center justify-between text-sm">
                   <span className="text-slate-500 font-medium flex items-center gap-1.5">
-                    <ShoppingBag className="w-4 h-4 text-emerald-500" /> Collect Amount:
+                    <MapPin className="w-4 h-4 text-sky-500" /> Customer GPS:
                   </span>
-                  <span className="font-black text-lg text-emerald-700">
-                    {formatINR(order.totalAmount)}
-                  </span>
+                  <a
+                    href={`https://maps.google.com/?q=${customerLat},${customerLng}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="font-mono text-xs font-bold text-sky-600 hover:underline"
+                  >
+                    {Number(customerLat).toFixed(4)}, {Number(customerLng).toFixed(4)}
+                  </a>
+                </div>
+              )}
+              {/* Shop Live Location */}
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-slate-500 font-medium flex items-center gap-1.5">
+                  <MapPin className="w-4 h-4 text-emerald-500" /> Shop Location:
+                </span>
+                <a
+                  href={`https://maps.google.com/?q=${shopLat},${shopLng}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="font-mono text-xs font-bold text-emerald-600 hover:underline"
+                >
+                  {shopLat.toFixed(4)}, {shopLng.toFixed(4)}
+                </a>
+              </div>
+              {order?.totalAmount !== undefined && (
+                <div className="space-y-2 pt-2 border-t border-slate-200">
+                  {/* Delivery charge line */}
+                  {orderDeliveryCharge !== null && (
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-slate-500 font-medium flex items-center gap-1.5">
+                        <Truck className="w-4 h-4 text-sky-500" /> Delivery Charge:
+                      </span>
+                      <span className={`font-extrabold text-sm ${orderDeliveryCharge === 0 ? 'text-emerald-600' : 'text-amber-700'}`}>
+                        {orderDeliveryCharge === 0
+                          ? `🎁 FREE${orderDistanceKm !== null ? ` (${orderDistanceKm.toFixed(1)} km)` : ''}`
+                          : `${formatINR(orderDeliveryCharge)}${orderDistanceKm !== null ? ` (${orderDistanceKm.toFixed(1)} km)` : ''}`}
+                      </span>
+                    </div>
+                  )}
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-slate-500 font-medium flex items-center gap-1.5">
+                      <ShoppingBag className="w-4 h-4 text-emerald-500" /> Collect Amount:
+                    </span>
+                    <span className="font-black text-lg text-emerald-700">
+                      {formatINR(order.totalAmount)}
+                    </span>
+                  </div>
                 </div>
               )}
             </div>
           )}
 
-          {/* Quick Action Navigation & Call */}
+          {/* Delivery charge policy note */}
+          <div className="bg-sky-50 border border-sky-100 rounded-xl p-3 text-xs text-sky-700 space-y-1">
+            <p className="font-bold">📦 Delivery Charge Policy:</p>
+            <p>✓ Within {FREE_DELIVERY_KM} km of shop → FREE delivery</p>
+            <p>✓ Longer than {FREE_DELIVERY_KM} km → ₹10 per 15 km slab (or part thereof)</p>
+          </div>
+
+          {/* Quick Action Navigation, Call & Live Tracking */}
           <div className="grid grid-cols-2 gap-3">
             <a
               href={routeUrl}
@@ -226,6 +541,16 @@ export default function DeliverySubmissionPage() {
               </a>
             )}
           </div>
+
+          <Link
+            href={`/track/${orderId}`}
+            target="_blank"
+            className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-2xl bg-slate-800 hover:bg-slate-700 text-sky-300 font-extrabold text-xs border border-slate-700 transition-colors"
+          >
+            <Truck className="w-4 h-4 text-sky-400" />
+            <span>Open Customer Live Tracking Page (/track/{orderId?.slice(-6)?.toUpperCase()})</span>
+            <ExternalLink className="w-3.5 h-3.5" />
+          </Link>
 
           {errorMessage && (
             <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-semibold flex items-start gap-2.5">

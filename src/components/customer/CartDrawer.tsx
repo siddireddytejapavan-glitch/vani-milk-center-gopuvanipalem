@@ -159,8 +159,8 @@ export default function CartDrawer() {
                   <span>{formatINR(totalAmount)}</span>
                 </div>
                 <div className="flex justify-between text-slate-600">
-                  <span>{t('cart.delivery', 'Delivery / Pickup')}</span>
-                  <span className="text-emerald-700 font-semibold">{t('cart.free', 'Free Shop Pickup')}</span>
+                  <span>{t('cart.delivery', 'Delivery Charge')}</span>
+                  <span className="text-sky-600 font-semibold text-xs">{t('cart.deliveryNote', '📍 Use GPS at checkout')}</span>
                 </div>
                 <div className="flex justify-between font-extrabold text-slate-900 text-lg pt-2 border-t border-slate-200">
                   <span>{t('cart.total', 'Order Total')}</span>

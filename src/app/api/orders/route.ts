@@ -9,6 +9,7 @@ import {
   generateLiveLocationMapUrl,
 } from '@/lib/whatsapp';
 import { findFallbackVariant, getShopSettings } from '@/lib/catalog';
+import { getDeliveryInfo, SHOP_LAT_DEFAULT, SHOP_LNG_DEFAULT } from '@/lib/delivery';
 
 export async function POST(request: Request) {
   try {
@@ -164,6 +165,21 @@ export async function POST(request: Request) {
         )
     );
 
+    // Compute shop live location from settings (or use default Gopuvanipalem coords)
+    const settings = await getShopSettings();
+    const shopLat: number = (settings as any)?.shopLat ?? SHOP_LAT_DEFAULT;
+    const shopLng: number = (settings as any)?.shopLng ?? SHOP_LNG_DEFAULT;
+
+    // Compute delivery charge from GPS distance
+    const numLat = typeof latitude === 'number' && !isNaN(latitude) ? latitude : null;
+    const numLng = typeof longitude === 'number' && !isNaN(longitude) ? longitude : null;
+    const deliveryInfo =
+      numLat !== null && numLng !== null
+        ? getDeliveryInfo(numLat, numLng, shopLat, shopLng)
+        : null;
+    const deliveryCharge = deliveryInfo?.deliveryCharge ?? 0;
+    const grandTotal = calculatedTotal + deliveryCharge;
+
     // Create Order and OrderItems in database transaction & decrement stock (with safe fallback)
     let createdOrder: any = null;
     if (isDatabaseConfigured()) {
@@ -175,7 +191,12 @@ export async function POST(request: Request) {
               customerPhone: cleanPhone,
               address: address.trim(),
               notes: notes?.trim() || null,
-              totalAmount: calculatedTotal,
+              totalAmount: grandTotal,
+              deliveryCharge,
+              customerLat: numLat,
+              customerLng: numLng,
+              shopLat,
+              shopLng,
               status: 'Pending',
               isFunctionOrder,
               items: {
@@ -231,37 +252,51 @@ export async function POST(request: Request) {
         customerPhone: cleanPhone,
         address: address.trim(),
         notes: notes?.trim() || null,
-        totalAmount: calculatedTotal,
+        totalAmount: grandTotal,
+        deliveryCharge,
+        customerLat: numLat,
+        customerLng: numLng,
+        shopLat,
+        shopLng,
       };
     }
 
     // Retrieve shop settings safely for configured WhatsApp number
-    const settings = await getShopSettings();
-
     const targetWhatsAppNumber = cleanWhatsAppNumber(
       settings?.whatsappNumber || process.env.SHOP_WHATSAPP_NUMBER || '917995597719'
     );
 
     // Compute live location and delivery boy navigation route from Vani Milk Center
-    const numLat = typeof latitude === 'number' && !isNaN(latitude) ? latitude : null;
-    const numLng = typeof longitude === 'number' && !isNaN(longitude) ? longitude : null;
+    const origin =
+      request.headers.get('origin') ||
+      (request.headers.get('host') ? `http://${request.headers.get('host')}` : '');
+    const trackingUrl = origin ? `${origin}/track/${createdOrder.id}` : `/track/${createdOrder.id}`;
+
     const customerLiveMapUrl =
       liveLocationUrl || (numLat && numLng ? generateLiveLocationMapUrl(numLat, numLng) : null);
-    const deliveryRouteUrl = generateDeliveryRouteUrl(createdOrder.address, numLat, numLng);
+    const deliveryRouteUrl = generateDeliveryRouteUrl(createdOrder.address, numLat, numLng, shopLat, shopLng);
+    const shopLiveMapUrl = `https://maps.google.com/?q=${shopLat},${shopLng}`;
 
-    // Format WhatsApp message with live location and delivery route
+    // Format WhatsApp message with live location, delivery route and delivery charge
+    const deliveryChargeNote = deliveryInfo
+      ? deliveryInfo.isFreeDelivery
+        ? `\n🎁 *Delivery Charge:* FREE (within ${deliveryInfo.distanceKm.toFixed(1)} km of shop)`
+        : `\n🚚 *Delivery Charge:* ₹${deliveryCharge} (${deliveryInfo.distanceKm.toFixed(1)} km: 10km free + ${(deliveryInfo.distanceKm - 10).toFixed(1)}km at ₹10 per 15km)`
+      : '';
+
     const whatsAppMessage = generateOrderWhatsAppMessage({
       orderId: createdOrder.id,
       customerName: createdOrder.customerName,
       customerPhone: createdOrder.customerPhone,
       address: createdOrder.address,
       items: verifiedOrderItems,
-      totalAmount: calculatedTotal,
-      notes: createdOrder.notes,
+      totalAmount: grandTotal,
+      notes: deliveryChargeNote + (createdOrder.notes ? `\n📝 Notes: ${createdOrder.notes}` : ''),
       latitude: numLat,
       longitude: numLng,
       liveLocationUrl: customerLiveMapUrl,
       deliveryRouteUrl,
+      trackingUrl,
     });
 
     const whatsAppLink = generateWhatsAppLink(targetWhatsAppNumber, whatsAppMessage);
@@ -275,6 +310,19 @@ export async function POST(request: Request) {
         shopWhatsAppNumber: targetWhatsAppNumber,
         deliveryRouteUrl,
         liveLocationUrl: customerLiveMapUrl,
+        shopLiveMapUrl,
+        trackingUrl,
+        deliveryCharge,
+        deliveryInfo: deliveryInfo
+          ? {
+              distanceKm: deliveryInfo.distanceKm,
+              isFreeDelivery: deliveryInfo.isFreeDelivery,
+              label: deliveryInfo.label,
+              breakdown: deliveryInfo.breakdown,
+            }
+          : null,
+        subtotal: calculatedTotal,
+        grandTotal,
       },
       { status: 201 }
     );

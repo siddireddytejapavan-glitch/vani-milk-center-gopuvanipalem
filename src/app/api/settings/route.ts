@@ -34,6 +34,8 @@ export async function GET() {
           logoUrl: '/images/shop-logo.svg',
           aboutDescription: 'Welcome to Vani Milk Center, Gopuvanipalem. We provide 100% pure & natural, hygienically processed milk, curd, ghee, paneer, buttermilk, and lassi for daily families, functions, and bulk catering orders.',
           bannerText: '100% Pure & Natural Milk Products | Healthy Life Happy Life | Home Delivery: 7995597719',
+          shopLat: 16.4307,
+          shopLng: 81.1167,
         },
       });
     }
@@ -76,6 +78,8 @@ export async function PUT(request: Request) {
       logoUrl,
       aboutDescription,
       bannerText,
+      shopLat,
+      shopLng,
     } = body;
 
     if (!shopName || !phone || !whatsappNumber) {
@@ -99,6 +103,8 @@ export async function PUT(request: Request) {
         logoUrl: logoUrl || '/images/shop-logo.svg',
         aboutDescription: aboutDescription || 'Welcome to Vani Milk Center, Gopuvanipalem.',
         bannerText: bannerText || '100% Pure & Natural Milk Products | Healthy Life Happy Life | Home Delivery: 7995597719',
+        ...(typeof shopLat === 'number' && !isNaN(shopLat) ? { shopLat } : {}),
+        ...(typeof shopLng === 'number' && !isNaN(shopLng) ? { shopLng } : {}),
       },
       create: {
         id: 'default-settings',
@@ -111,6 +117,8 @@ export async function PUT(request: Request) {
         logoUrl: logoUrl || '/images/shop-logo.svg',
         aboutDescription: aboutDescription || 'Welcome to Vani Milk Center, Gopuvanipalem.',
         bannerText: bannerText || '100% Pure & Natural Milk Products | Healthy Life Happy Life | Home Delivery: 7995597719',
+        shopLat: (typeof shopLat === 'number' && !isNaN(shopLat)) ? shopLat : 16.4307,
+        shopLng: (typeof shopLng === 'number' && !isNaN(shopLng)) ? shopLng : 81.1167,
       },
     });
 

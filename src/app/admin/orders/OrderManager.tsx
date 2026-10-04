@@ -46,6 +46,14 @@ export interface OrderRecord {
   address: string;
   notes: string | null;
   totalAmount: number;
+  deliveryCharge?: number;
+  customerLat?: number | null;
+  customerLng?: number | null;
+  shopLat?: number | null;
+  shopLng?: number | null;
+  deliveryLat?: number | null;
+  deliveryLng?: number | null;
+  deliveryUpdatedAt?: string | Date | null;
   status: string;
   isFunctionOrder: boolean;
   createdAt: string | Date;
@@ -377,13 +385,24 @@ export default function OrderManager({
             );
 
             // Compute turn-by-turn route from Vani Milk Center (Gopuvanipalem) to customer address
-            const routeUrl = generateDeliveryRouteUrl(order.address);
+            const routeUrl = generateDeliveryRouteUrl(
+              order.address,
+              order.customerLat,
+              order.customerLng,
+              order.shopLat,
+              order.shopLng
+            );
 
             // Dispatch text for delivery boy
             const deliveryPortalUrl =
               typeof window !== 'undefined'
                 ? `${window.location.origin}/delivery/${order.id}`
                 : `/delivery/${order.id}`;
+
+            const trackingPageUrl =
+              typeof window !== 'undefined'
+                ? `${window.location.origin}/track/${order.id}`
+                : `/track/${order.id}`;
 
             const deliveryBoyDispatchMsg = generateDeliveryBoyDispatchMessage({
               orderId: order.id,
@@ -394,6 +413,7 @@ export default function OrderManager({
               items: order.items,
               deliveryRouteUrl: routeUrl,
               deliveryPortalUrl,
+              liveLocationUrl: order.customerLat && order.customerLng ? `https://maps.google.com/?q=${order.customerLat},${order.customerLng}` : null,
               notes: order.notes,
             });
             const deliveryBoyWhatsAppLink = `https://wa.me/?text=${encodeURIComponent(
@@ -516,12 +536,50 @@ export default function OrderManager({
                       </div>
                     </div>
 
+                    {/* Customer Ordered Place Live GPS Pin */}
+                    {order.customerLat !== null && order.customerLat !== undefined && order.customerLng !== null && order.customerLng !== undefined && (
+                      <div className="flex items-center justify-between p-2 rounded-xl bg-emerald-50 border border-emerald-200">
+                        <span className="font-bold text-emerald-800 flex items-center gap-1.5 text-[11px]">
+                          <MapPin className="w-3.5 h-3.5 text-emerald-600" />
+                          <span>Customer GPS Pin:</span>
+                        </span>
+                        <a
+                          href={`https://maps.google.com/?q=${order.customerLat},${order.customerLng}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="font-mono font-bold text-[11px] text-emerald-700 hover:underline inline-flex items-center gap-1"
+                        >
+                          <span>{Number(order.customerLat).toFixed(4)}, {Number(order.customerLng).toFixed(4)}</span>
+                          <ExternalLink className="w-3 h-3" />
+                        </a>
+                      </div>
+                    )}
+
+                    {/* Delivery Boy Live Location */}
+                    {order.deliveryLat !== null && order.deliveryLat !== undefined && order.deliveryLng !== null && order.deliveryLng !== undefined && (
+                      <div className="flex items-center justify-between p-2 rounded-xl bg-sky-50 border border-sky-200">
+                        <span className="font-bold text-sky-800 flex items-center gap-1.5 text-[11px]">
+                          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                          <span>Rider Live GPS:</span>
+                        </span>
+                        <a
+                          href={`https://maps.google.com/?q=${order.deliveryLat},${order.deliveryLng}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="font-mono font-bold text-[11px] text-sky-700 hover:underline inline-flex items-center gap-1"
+                        >
+                          <span>{Number(order.deliveryLat).toFixed(4)}, {Number(order.deliveryLng).toFixed(4)}</span>
+                          <ExternalLink className="w-3 h-3" />
+                        </a>
+                      </div>
+                    )}
+
                     {/* Delivery Boy Route & Navigation Action Bar */}
                     <div className="p-3 bg-white rounded-xl border border-slate-200 space-y-2">
                       <div className="flex items-center justify-between">
                         <span className="font-extrabold text-slate-800 flex items-center gap-1.5 text-[11px]">
                           <Navigation className="w-3.5 h-3.5 text-sky-600" />
-                          <span>Delivery Boy Route from Shop:</span>
+                          <span>Delivery Boy Route:</span>
                         </span>
                         <button
                           type="button"
@@ -556,6 +614,16 @@ export default function OrderManager({
                           <span>Send Rider</span>
                         </a>
                       </div>
+
+                      {/* Customer Live Tracking Link */}
+                      <Link
+                        href={`/track/${order.id}`}
+                        target="_blank"
+                        className="w-full flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg bg-slate-50 hover:bg-slate-100 text-slate-700 font-bold text-[10px] border border-slate-200 transition-colors"
+                      >
+                        <ExternalLink className="w-3 h-3 text-slate-500" />
+                        <span>Live Tracking Page (/track/{order.id.slice(-6).toUpperCase()})</span>
+                      </Link>
                     </div>
 
                     {order.notes && (
@@ -610,11 +678,21 @@ export default function OrderManager({
                       </table>
                     </div>
 
-                    <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-sm">
-                      <span className="font-bold text-slate-500">Order Grand Total:</span>
-                      <span className="font-black text-lg text-sky-700">
-                        {formatINR(order.totalAmount)}
-                      </span>
+                    <div className="pt-3 border-t border-slate-100 space-y-1">
+                      {order.deliveryCharge !== undefined && (
+                        <div className="flex items-center justify-between text-xs text-slate-600">
+                          <span>Delivery Charge (10km free, ₹10/15km):</span>
+                          <span className={`font-extrabold ${order.deliveryCharge === 0 ? 'text-emerald-600' : 'text-amber-700'}`}>
+                            {order.deliveryCharge === 0 ? '🎁 FREE' : formatINR(order.deliveryCharge)}
+                          </span>
+                        </div>
+                      )}
+                      <div className="flex items-center justify-between text-sm pt-1 border-t border-dashed border-slate-200">
+                        <span className="font-bold text-slate-500">Order Grand Total:</span>
+                        <span className="font-black text-lg text-sky-700">
+                          {formatINR(order.totalAmount)}
+                        </span>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -678,9 +756,11 @@ export default function OrderManager({
               <div className="w-full h-80 rounded-2xl overflow-hidden border border-slate-200 bg-slate-100">
                 <iframe
                   title="Delivery Navigation Route"
-                  src={`https://maps.google.com/maps?saddr=659J%2BCX2+Vani+milk,+Gopuvanipalem,+Andhra+Pradesh+521002&daddr=${encodeURIComponent(
-                    activeRouteOrder.address
-                  )}&output=embed`}
+                  src={
+                    activeRouteOrder.customerLat && activeRouteOrder.customerLng
+                      ? `https://maps.google.com/maps?saddr=${activeRouteOrder.shopLat || 16.4307},${activeRouteOrder.shopLng || 81.1167}&daddr=${activeRouteOrder.customerLat},${activeRouteOrder.customerLng}&output=embed`
+                      : `https://maps.google.com/maps?saddr=${activeRouteOrder.shopLat || 16.4307},${activeRouteOrder.shopLng || 81.1167}&daddr=${encodeURIComponent(activeRouteOrder.address)}&output=embed`
+                  }
                   width="100%"
                   height="100%"
                   className="w-full h-full border-0"
@@ -692,7 +772,13 @@ export default function OrderManager({
               {/* Actions */}
               <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2">
                 <a
-                  href={generateDeliveryRouteUrl(activeRouteOrder.address)}
+                  href={generateDeliveryRouteUrl(
+                    activeRouteOrder.address,
+                    activeRouteOrder.customerLat,
+                    activeRouteOrder.customerLng,
+                    activeRouteOrder.shopLat,
+                    activeRouteOrder.shopLng
+                  )}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-sky-600 hover:bg-sky-700 text-white font-extrabold text-xs shadow transition-colors"

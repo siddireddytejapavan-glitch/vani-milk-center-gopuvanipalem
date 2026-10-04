@@ -21,6 +21,8 @@ import {
   Navigation,
   ExternalLink,
   Check,
+  Truck,
+  Info,
 } from 'lucide-react';
 import Navbar from '@/components/customer/Navbar';
 import Footer from '@/components/customer/Footer';
@@ -30,6 +32,7 @@ import { useShopSettings } from '@/context/ShopSettingsContext';
 import { useLanguage } from '@/context/LanguageContext';
 import { formatINR } from '@/lib/utils';
 import { generateDeliveryRouteUrl } from '@/lib/whatsapp';
+import { getDeliveryInfo, SHOP_LAT_DEFAULT, SHOP_LNG_DEFAULT } from '@/lib/delivery';
 
 export default function CartCheckoutPage() {
   const { items, updateQuantity, removeItem, clearCart, totalAmount, totalItems } = useCart();
@@ -52,6 +55,14 @@ export default function CartCheckoutPage() {
   } | null>(null);
   const [locationStatus, setLocationStatus] = useState<string | null>(null);
 
+  // Delivery charge computed from GPS (client-side preview)
+  const [deliveryPreview, setDeliveryPreview] = useState<{
+    distanceKm: number;
+    deliveryCharge: number;
+    isFreeDelivery: boolean;
+    label: string;
+  } | null>(null);
+
   // UI States
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
@@ -60,10 +71,18 @@ export default function CartCheckoutPage() {
     whatsAppLink: string;
     whatsAppMessage: string;
     totalAmount: number;
+    subtotal: number;
+    deliveryCharge: number;
     deliveryRouteUrl?: string;
     liveLocationUrl?: string;
+    shopLiveMapUrl?: string;
     address: string;
     customerName: string;
+    deliveryInfo?: {
+      distanceKm: number;
+      isFreeDelivery: boolean;
+      label: string;
+    } | null;
   } | null>(null);
 
   // Geolocation detection handler
@@ -85,7 +104,17 @@ export default function CartCheckoutPage() {
 
         setGpsLocation({ lat, lng, accuracy, url: mapUrl });
         setIsLocating(false);
-        setLocationStatus(`Live GPS captured (accuracy ±${Math.round(accuracy)}m)`);
+
+        // Compute delivery charge client-side using live shop coordinates
+        const currentShopLat = (settings as any)?.shopLat ?? SHOP_LAT_DEFAULT;
+        const currentShopLng = (settings as any)?.shopLng ?? SHOP_LNG_DEFAULT;
+        const info = getDeliveryInfo(lat, lng, currentShopLat, currentShopLng);
+        setDeliveryPreview(info);
+
+        const chargeNote = info.isFreeDelivery
+          ? ' 🎁 FREE Delivery!'
+          : ` 🚚 +₹${info.deliveryCharge} delivery`;
+        setLocationStatus(`Live GPS captured (±${Math.round(accuracy)}m) — ${info.distanceKm.toFixed(1)} km from shop.${chargeNote}`);
 
         const locationTag = `[📍 GPS: ${lat.toFixed(5)}, ${lng.toFixed(5)}]`;
         if (!address.trim()) {
@@ -165,9 +194,13 @@ export default function CartCheckoutPage() {
         orderId: data.order.id,
         whatsAppLink: data.whatsAppLink,
         whatsAppMessage: data.whatsAppMessage,
-        totalAmount: data.order.totalAmount,
+        totalAmount: data.grandTotal ?? data.order.totalAmount,
+        subtotal: data.subtotal ?? data.order.totalAmount,
+        deliveryCharge: data.deliveryCharge ?? 0,
         deliveryRouteUrl: data.deliveryRouteUrl || generateDeliveryRouteUrl(address.trim(), gpsLocation?.lat, gpsLocation?.lng),
         liveLocationUrl: data.liveLocationUrl || gpsLocation?.url,
+        shopLiveMapUrl: data.shopLiveMapUrl,
+        deliveryInfo: data.deliveryInfo ?? null,
         address: address.trim(),
         customerName: customerName.trim(),
       });
@@ -246,6 +279,39 @@ export default function CartCheckoutPage() {
                   Order Ref: <span className="font-mono font-bold text-slate-900">#{completedOrder.orderId.slice(-6).toUpperCase()}</span> • Total: <span className="font-extrabold text-emerald-700">{formatINR(completedOrder.totalAmount)}</span>
                 </p>
               </div>
+
+              {/* Delivery Charge Breakdown Card */}
+              {completedOrder.deliveryInfo && (
+                <div className={`rounded-2xl p-4 border text-left text-sm ${completedOrder.deliveryInfo.isFreeDelivery ? 'bg-emerald-50 border-emerald-200' : 'bg-amber-50 border-amber-200'}`}>
+                  <div className="flex items-center gap-2 mb-2">
+                    <Truck className={`w-4 h-4 ${completedOrder.deliveryInfo.isFreeDelivery ? 'text-emerald-600' : 'text-amber-600'}`} />
+                    <span className={`font-extrabold text-xs uppercase tracking-wide ${completedOrder.deliveryInfo.isFreeDelivery ? 'text-emerald-700' : 'text-amber-700'}`}>
+                      Delivery Charge Summary
+                    </span>
+                  </div>
+                  <div className="space-y-1 text-xs">
+                    <div className="flex justify-between">
+                      <span className="text-slate-600">Products Subtotal:</span>
+                      <span className="font-bold">{formatINR((completedOrder as any).subtotal ?? completedOrder.totalAmount)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-600">Delivery ({completedOrder.deliveryInfo.distanceKm.toFixed(1)} km):</span>
+                      <span className={`font-extrabold ${completedOrder.deliveryInfo.isFreeDelivery ? 'text-emerald-700' : 'text-amber-700'}`}>
+                        {completedOrder.deliveryInfo.isFreeDelivery ? '🎁 FREE' : formatINR((completedOrder as any).deliveryCharge ?? 0)}
+                      </span>
+                    </div>
+                    <div className="flex justify-between pt-1 border-t border-slate-200 font-black">
+                      <span>Grand Total:</span>
+                      <span className="text-sky-700 text-base">{formatINR(completedOrder.totalAmount)}</span>
+                    </div>
+                    <p className="text-[10px] text-slate-500 pt-1">
+                      {completedOrder.deliveryInfo.isFreeDelivery
+                        ? '✓ Within 10 km of shop — FREE delivery zone'
+                        : `10 km free + ${(completedOrder.deliveryInfo.distanceKm - 10).toFixed(1)} km extra (${Math.ceil((completedOrder.deliveryInfo.distanceKm - 10) / 15)} slab × ₹10/15km) = ₹${(completedOrder as any).deliveryCharge}`}
+                    </p>
+                  </div>
+                </div>
+              )}
 
               {/* Delivery Boy Navigation & Order Tracking Card */}
               <div className="bg-slate-50 rounded-2xl p-5 sm:p-6 border border-slate-200 text-left space-y-4">
@@ -346,6 +412,14 @@ export default function CartCheckoutPage() {
               </div>
 
               <div className="space-y-3 pt-2">
+                <Link
+                  href={`/track/${completedOrder.orderId}`}
+                  className="w-full flex items-center justify-center gap-2.5 py-4 px-6 rounded-2xl bg-sky-600 hover:bg-sky-700 text-white font-extrabold text-base shadow-lg shadow-sky-600/20 active:scale-95 transition-all"
+                >
+                  <Truck className="w-5 h-5 text-white" />
+                  <span>Track Live Delivery of Your Products 🛵</span>
+                </Link>
+
                 <a
                   href={completedOrder.whatsAppLink}
                   target="_blank"
@@ -471,16 +545,44 @@ export default function CartCheckoutPage() {
                 {/* Subtotal & Total display */}
                 <div className="pt-6 border-t border-slate-100 space-y-2">
                   <div className="flex justify-between items-center text-sm text-slate-600">
-                    <span>Subtotal:</span>
+                    <span>Subtotal ({totalItems} items):</span>
                     <span className="font-semibold text-slate-900">{formatINR(totalAmount)}</span>
                   </div>
+
+                  {/* Delivery Charge row */}
                   <div className="flex justify-between items-center text-sm text-slate-600">
-                    <span>Estimated Delivery / Counter Pickup:</span>
-                    <span className="font-semibold text-emerald-600">Free / Standard Rate</span>
+                    <span className="flex items-center gap-1.5">
+                      <Truck className="w-3.5 h-3.5 text-sky-500" />
+                      Delivery Charge:
+                    </span>
+                    {deliveryPreview ? (
+                      deliveryPreview.isFreeDelivery ? (
+                        <span className="font-bold text-emerald-600">🎁 FREE ({deliveryPreview.distanceKm.toFixed(1)} km)</span>
+                      ) : (
+                        <span className="font-bold text-amber-600">{formatINR(deliveryPreview.deliveryCharge)}</span>
+                      )
+                    ) : (
+                      <span className="text-xs text-slate-400 italic flex items-center gap-1">
+                        <Info className="w-3 h-3" />
+                        Use GPS to calculate
+                      </span>
+                    )}
                   </div>
+
+                  {deliveryPreview && (
+                    <div className="text-[11px] text-slate-500 pl-1">
+                      {deliveryPreview.isFreeDelivery
+                        ? `✓ Free delivery for orders within 10 km of shop`
+                        : `10 km free + ${(deliveryPreview.distanceKm - 10).toFixed(1)} km extra (${Math.ceil((deliveryPreview.distanceKm - 10) / 15)} slab × ₹10 per 15 km) = ₹${deliveryPreview.deliveryCharge}`
+                      }
+                    </div>
+                  )}
+
                   <div className="flex justify-between items-center text-base sm:text-lg font-black text-slate-900 pt-2 border-t border-dashed border-slate-200">
                     <span>Estimated Total:</span>
-                    <span className="text-xl sm:text-2xl text-sky-700">{formatINR(totalAmount)}</span>
+                    <span className="text-xl sm:text-2xl text-sky-700">
+                      {formatINR(totalAmount + (deliveryPreview?.deliveryCharge ?? 0))}
+                    </span>
                   </div>
                 </div>
 

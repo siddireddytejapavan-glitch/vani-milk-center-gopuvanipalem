@@ -12,6 +12,8 @@ export interface ShopSettingsData {
   logoUrl: string;
   aboutDescription: string;
   bannerText: string;
+  shopLat?: number;
+  shopLng?: number;
 }
 
 const defaultSettings: ShopSettingsData = {
@@ -24,6 +26,8 @@ const defaultSettings: ShopSettingsData = {
   logoUrl: '/images/shop-logo.svg',
   aboutDescription: 'Welcome to Vani Milk Center, Gopuvanipalem. We deliver 100% pure & natural, hygienically processed milk, curd, ghee, paneer, buttermilk, and lassi for daily families, functions, and bulk catering orders.',
   bannerText: '100% Pure & Natural Milk Products | Healthy Life Happy Life | Home Delivery: 7995597719',
+  shopLat: 16.4307,
+  shopLng: 81.1167,
 };
 
 const ShopSettingsContext = createContext<{
